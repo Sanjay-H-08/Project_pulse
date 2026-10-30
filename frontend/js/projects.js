@@ -7,6 +7,7 @@ PP.startWizard = () => {
   PP.wizardOpen = true; PP.selectedProjectId = null; step = 1; plan = [];
   PP._wizardMembers = PP.data.team.slice(0, Math.min(3, PP.data.team.length));
   ["p-name", "p-desc", "p-deadline", "p-req"].forEach(id => $(id).value = "");
+  if ($("p-priority")) $("p-priority").value = "Medium";
   $("plan-preview").innerHTML = "";
   if (location.hash === "#projects") PP.showPage("projects"); else location.hash = "projects";
 };
@@ -79,10 +80,18 @@ function renderProjectDetails(project) {
   const startDate = project.startDate || (tasks.length ? tasks.reduce((min, t) => !min || t.start < min ? t.start : min, "") : "");
   const statusClass = project.status === "Completed" ? "status-Completed" : "status-Active";
 
+  // Calculate CPM & PERT for project
+  const cpmRes = PP.cpm ? PP.cpm.calculate(project.id) : null;
+  const cpmTasksMap = new Map((cpmRes ? cpmRes.tasks : []).map(t => [t.id, t]));
+
   $("project-details").innerHTML = `
     <div class="project-detail-top">
       <button class="btn ghost" id="back-to-projects">← Back to Projects</button>
       <div class="project-detail-actions">
+        <button class="btn ghost" id="detail-view-cpm">⚡ CPM & PERT</button>
+        <button class="btn ghost" id="detail-view-risk">🛡️ Risk Register</button>
+        <button class="btn ghost" id="detail-view-delay">⏱️ Delay Prediction</button>
+        <button class="btn ghost" id="detail-view-whatif">🧪 What-If Simulator</button>
         <button class="btn ghost" id="detail-view-gantt">View Gantt chart</button>
         <button class="btn ghost" id="detail-toggle-status">${project.status === "Active" ? "Mark completed" : "Mark active"}</button>
         <button class="btn danger" id="detail-delete-project">Delete project</button>
@@ -96,7 +105,7 @@ function renderProjectDetails(project) {
           <h2>${PP.esc(project.name)}</h2>
           <p class="muted">${PP.esc(project.desc || "No project description has been added yet.")}</p>
         </div>
-        <span class="badge ${statusClass}">${PP.esc(project.status || "Active")}</span>
+        <div class="project-hero-badges"><span class="badge project-priority priority-${PP.esc(project.priority || "Medium").toLowerCase()}">${PP.esc(project.priority || "Medium")} priority</span><span class="badge ${statusClass}">${PP.esc(project.status || "Active")}</span></div>
       </div>
       <div class="project-progress-line">
         <div class="row-between"><strong>Overall progress</strong><strong>${progress}%</strong></div>
@@ -108,6 +117,48 @@ function renderProjectDetails(project) {
         <div><span>Team size planned</span><strong>${Number(project.members) || assigned.length || 0} members</strong></div>
         <div><span>Total tasks</span><strong>${taskCount}</strong></div>
       </div>
+    </section>
+
+    <!-- CPM & PERT Analysis Summary Card -->
+    <section class="card project-cpm-card">
+      <div class="project-cpm-header">
+        <div>
+          <span class="eyebrow" style="color:var(--cpm-critical)">SCHEDULE ANALYSIS (CPM & PERT)</span>
+          <h3 style="margin-top:2px;font-size:1.1rem">Critical Path & Delivery Risk</h3>
+        </div>
+        <button class="btn small-btn" id="open-cpm-details">Open Full Analysis &rarr;</button>
+      </div>
+      <div class="project-cpm-grid">
+        <div class="project-cpm-stat">
+          <span>Critical Path Duration</span>
+          <strong>${cpmRes ? cpmRes.projectDuration : 0} days</strong>
+          <small class="muted small">${cpmRes ? cpmRes.criticalTaskIds.size : 0} critical activities (0 float)</small>
+        </div>
+        <div class="project-cpm-stat">
+          <span>PERT Expected Duration</span>
+          <strong>${cpmRes ? cpmRes.pert.expectedDuration : 0} &plusmn; ${cpmRes ? cpmRes.pert.sigma : 0}d</strong>
+          <small class="muted small">Variance &sigma;&sup2;: ${cpmRes ? cpmRes.pert.variance : 0}</small>
+        </div>
+        <div class="project-cpm-stat">
+          <span>On-Time Probability</span>
+          <strong style="color:${cpmRes && cpmRes.pert.probability >= 85 ? 'var(--success)' : (cpmRes && cpmRes.pert.probability >= 50 ? 'var(--warn)' : 'var(--danger)')}">
+            ${cpmRes ? cpmRes.pert.probability : 0}%
+          </strong>
+          <small class="muted small">Z-Score: ${cpmRes ? (cpmRes.pert.zScore > 0 ? '+' : '') + cpmRes.pert.zScore : 0}</small>
+        </div>
+      </div>
+      ${cpmRes && cpmRes.criticalPath && cpmRes.criticalPath.length ? `
+        <div style="margin-top:10px">
+          <span class="muted small" style="font-weight:700">CRITICAL SEQUENCE (Zero Float):</span>
+          <div class="cpm-chain-flow" style="margin-top:6px">
+            ${cpmRes.criticalPath.map((id, idx) => {
+              const ct = cpmTasksMap.get(id);
+              return `<div class="cpm-chain-step" data-edit-task="${id}"><span>${PP.esc(ct ? ct.name : id)}</span><small>(${ct ? ct.duration : 0}d)</small></div>` +
+                (idx < cpmRes.criticalPath.length - 1 ? '<span class="cpm-chain-arrow">&rarr;</span>' : '');
+            }).join('')}
+          </div>
+        </div>
+      ` : ''}
     </section>
 
     <div class="project-detail-stats">
@@ -125,7 +176,15 @@ function renderProjectDetails(project) {
         </div>
         ${tasks.length ? `
           <div class="project-task-list">
-            ${tasks.map(t => `
+            ${tasks.map(t => {
+              const ct = cpmTasksMap.get(t.id);
+              const isCrit = ct ? ct.isCritical : false;
+              const slack = ct ? ct.totalFloat : 0;
+              const cpmBadge = isCrit
+                ? '<span class="badge badge-critical" title="Critical Path: 0 float">⚡ Critical</span>'
+                : `<span class="badge badge-slack" title="Slack buffer">Slack ${slack}d</span>`;
+
+              return `
               <div class="project-task-row">
                 <div class="project-task-main">
                   <strong>${PP.esc(t.name)}</strong>
@@ -134,10 +193,12 @@ function renderProjectDetails(project) {
                 <div class="project-task-status">
                   <span class="badge p-${PP.esc(t.priority || "Medium")}">${PP.esc(t.priority || "Medium")}</span>
                   <span class="badge task-status-${t.status === "Done" ? "done" : t.status === "In Progress" ? "progress" : "todo"}">${PP.esc(t.status || "To Do")}</span>
+                  ${cpmBadge}
                   <button class="link-btn" data-edit-task="${t.id}">Edit</button>
                 </div>
                 <div class="project-task-progress"><div class="bar"><i style="width:${Math.max(0, Math.min(100, Number(t.progress) || 0))}%"></i></div><span>${Math.max(0, Math.min(100, Number(t.progress) || 0))}%</span></div>
-              </div>`).join("")}
+              </div>`;
+            }).join("")}
           </div>` : `<p class="empty">No tasks have been added to this project yet.</p>`}
       </section>
 
@@ -170,6 +231,34 @@ function renderProjectDetails(project) {
     PP.ganttProjectId = project.id;
     PP.showPage("gantt");
   };
+  const openCpm = () => {
+    PP.cpmProjectId = project.id;
+    location.hash = "cpm-pert";
+  };
+  const openRisk = () => {
+    location.hash = "risk-analysis";
+    PP.showPage("risk-analysis");
+    const sel = $("risk-project-select");
+    if (sel) { sel.value = project.id; sel.dispatchEvent(new Event("change")); }
+  };
+  const openDelay = () => {
+    location.hash = "delay-prediction";
+    PP.showPage("delay-prediction");
+    const sel = $("delay-project-select");
+    if (sel) { sel.value = project.id; sel.dispatchEvent(new Event("change")); }
+  };
+  const openWhatIf = () => {
+    location.hash = "whatif-simulator";
+    PP.showPage("whatif-simulator");
+    const sel = $("whatif-project-select");
+    if (sel) { sel.value = project.id; sel.dispatchEvent(new Event("change")); }
+  };
+  if ($("detail-view-cpm")) $("detail-view-cpm").onclick = openCpm;
+  if ($("open-cpm-details")) $("open-cpm-details").onclick = openCpm;
+  if ($("detail-view-risk")) $("detail-view-risk").onclick = openRisk;
+  if ($("detail-view-delay")) $("detail-view-delay").onclick = openDelay;
+  if ($("detail-view-whatif")) $("detail-view-whatif").onclick = openWhatIf;
+
   $("detail-toggle-status").onclick = () => window.toggleProject(project.id);
   $("detail-delete-project").onclick = () => window.deleteProject(project.id);
   $("detail-add-task").onclick = () => PP.openTask(null, project.id);
@@ -197,6 +286,7 @@ function renderProjects() {
     const pr = PP.projectProgress(p.id);
     return `<article class="card proj-card project-click-card" data-open-project="${p.id}" tabindex="0" role="button" aria-label="Open details for ${PP.esc(p.name)}">
       <div class="row-between"><h3>${PP.esc(p.name)}</h3><span class="badge status-${p.status === "Completed" ? "Completed" : "Active"}">${PP.esc(p.status)}</span></div>
+      <div class="project-priority-line"><span class="badge project-priority priority-${PP.esc(p.priority || "Medium").toLowerCase()}">${PP.esc(p.priority || "Medium")} priority</span></div>
       <p>${PP.esc(p.desc || "No description")}</p><div class="bar"><i style="width:${pr}%"></i></div>
       <div class="proj-meta"><span>${pr}% done</span><span>Due ${formatDate(p.deadline)}</span></div>
       <span class="project-open-hint">Click to view project details →</span>
@@ -250,9 +340,27 @@ document.addEventListener("DOMContentLoaded", () => {
     if (err) return $("wizard-error").textContent = err;
     if (step < 3) { if (step === 2) PP._wizardMembers = selectedMemberNames("p-team-choices"); step++; return showStep(); }
     const id = PP.nextId(PP.data.projects);
-    PP.data.projects.push({ id, name: $("p-name").value.trim(), desc: $("p-desc").value.trim(), deadline: $("p-deadline").value, members: PP._wizardMembers.length, teamMembers: PP._wizardMembers.slice(), status: "Active", req: $("p-req").value.trim() });
+    PP.data.projects.push({ id, name: $("p-name").value.trim(), desc: $("p-desc").value.trim(), deadline: $("p-deadline").value, priority: $("p-priority").value || "Medium", members: PP._wizardMembers.length, teamMembers: PP._wizardMembers.slice(), status: "Active", req: $("p-req").value.trim() });
     let tid = PP.nextId(PP.data.tasks);
-    plan.forEach((t, i) => PP.data.tasks.push({ id: tid + i, project: id, name: t.name, start: t.start, end: t.end, progress: 0, assignee: t.assignee, status: "To Do", priority: "Medium", dep: i ? tid + i - 1 : 0 }));
+    plan.forEach((t, i) => {
+      const dur = Math.max(1, PP.diff(t.start, t.end) + 1);
+      PP.data.tasks.push({
+        id: tid + i,
+        project: id,
+        name: t.name,
+        start: t.start,
+        end: t.end,
+        progress: 0,
+        assignee: t.assignee,
+        status: "To Do",
+        priority: "Medium",
+        dep: i ? tid + i - 1 : 0,
+        deps: i ? [tid + i - 1] : [],
+        opt: Math.max(1, Math.round(dur * 0.75)),
+        likely: dur,
+        pess: Math.max(dur + 1, Math.round(dur * 1.5))
+      });
+    });
     PP.save(); PP.wizardOpen = false; PP.selectedProjectId = id; PP.toast("Project created!"); renderProjects();
   };
 });

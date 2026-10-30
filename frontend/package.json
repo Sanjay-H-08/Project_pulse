@@ -1,0 +1,23 @@
+{
+  "name": "projectpulse",
+  "version": "1.0.0",
+  "description": "ProjectPulse — Project Management with CPM, PERT, Risk Analysis, Delay Prediction & What-If Monte Carlo Simulator",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve -l 3000 .",
+    "dev": "npx serve -l 3000 ."
+  },
+  "keywords": [
+    "project-management",
+    "cpm",
+    "pert",
+    "critical-path-method",
+    "gantt-chart",
+    "risk-analysis",
+    "delay-prediction",
+    "what-if-simulator",
+    "monte-carlo"
+  ],
+  "author": "ProjectPulse Team",
+  "license": "MIT"
+}

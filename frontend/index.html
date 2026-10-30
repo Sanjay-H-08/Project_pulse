@@ -7,6 +7,10 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/dashboard.css">
 <link rel="stylesheet" href="css/gantt.css">
+<link rel="stylesheet" href="css/cpm-pert.css">
+<link rel="stylesheet" href="css/risk-analysis.css">
+<link rel="stylesheet" href="css/delay-prediction.css">
+<link rel="stylesheet" href="css/whatif-simulator.css">
 <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
@@ -53,6 +57,7 @@
             <h2 class="mt">Recent projects</h2><div id="recent"></div></div>
           <div class="card"><h2>Upcoming deadlines</h2><div id="deadlines"></div></div>
         </div>
+        <div id="dashboard-intelligence" style="margin-top:20px"></div>
       </section>
 
       <section class="page" id="page-projects">
@@ -63,7 +68,8 @@
         <div id="project-details" class="hidden"></div>
         <div class="card hidden" id="wizard">
           <div class="steps" id="steps"></div>
-          <div id="step-1"><label>Project name<input id="p-name"></label>
+          <div id="step-1"><label>Project name<input id="p-name" required></label>
+            <label>Project priority<select id="p-priority"><option value="Critical">Critical</option><option value="Medium" selected>Medium</option><option value="Low">Low</option></select><span class="muted small">Choose the urgency for this project. You can change it when creating another project.</span></label>
             <label>Description<textarea id="p-desc" rows="3"></textarea></label></div>
           <div id="step-2" class="hidden"><label>Deadline<input id="p-deadline" type="date"></label>
             <label>Number of team members<input id="p-members" type="number" min="1" max="50" value="3" readonly></label>
@@ -76,22 +82,578 @@
         </div>
       </section>
 
+      
+
       <section class="page" id="page-gantt">
-        <div class="row-between gantt-toolbar"><div><h2>Project timeline</h2><label class="gantt-project-label">Show timeline for<select id="gantt-project"><option value="all">All projects</option></select></label></div>
-          <div class="toggle"><button id="zoom-day" class="active">Days</button><button id="zoom-week">Weeks</button></div></div>
-        <div class="legend"><i class="dot s-todo"></i>To Do <i class="dot s-prog"></i>In Progress <i class="dot s-done"></i>Done <i class="dot today-dot"></i>Today</div>
+        <div class="row-between gantt-toolbar">
+          <div>
+            <h2>Project timeline</h2>
+            <label class="gantt-project-label">Show timeline for<select id="gantt-project"><option value="all">All projects</option></select></label>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn ghost small-btn" id="toggle-critical-path" type="button">⚡ Highlight Critical Path</button>
+            <div class="toggle"><button id="zoom-day" class="active">Days</button><button id="zoom-week">Weeks</button></div>
+          </div>
+        </div>
+        <div class="legend">
+          <i class="dot s-todo"></i>To Do <i class="dot s-prog"></i>In Progress <i class="dot s-done"></i>Done <i class="dot today-dot"></i>Today
+          <span class="hidden" id="gantt-crit-legend"><i class="dot s-crit"></i>Critical Path <i class="dot s-slack"></i>Available Slack</span>
+        </div>
         <div class="card gantt-card"><div id="gantt"></div></div>
         <p class="muted small">Click a bar to edit that task.</p>
       </section>
+
+      <section class="page" id="page-cpm-pert">
+        <div class="cpm-topbar">
+          <div class="cpm-title-group">
+            <h2>Critical Path Method (CPM) & PERT Analysis</h2>
+            <p class="muted small">Identify schedule-critical activities, float/slack buffers, and statistical completion probabilities under uncertainty.</p>
+          </div>
+          <div class="cpm-controls">
+            <label class="cpm-control-label">Project:
+              <select id="cpm-project-select"></select>
+            </label>
+            <div class="toggle cpm-mode-toggle">
+              <button id="cpm-mode-pert" class="active" title="Use PERT Expected Durations Te">PERT (Te)</button>
+              <button id="cpm-mode-standard" title="Use scheduled dates duration">Standard Dates</button>
+            </div>
+            <button class="btn ghost small-btn" id="cpm-export-btn" title="Print or save CPM & PERT report">&#128438; Print Report</button>
+          </div>
+        </div>
+
+        <div class="cpm-project-context" id="cpm-project-context" role="status"></div>
+        <div class="stats cpm-stats" id="cpm-stats"></div>
+        <div class="card cpm-chain-card" id="cpm-chain-container"></div>
+
+        <div class="cpm-tabs">
+          <button class="cpm-tab active" data-tab="network">Activity Network Diagram (AoN)</button>
+          <button class="cpm-tab" data-tab="pert-analysis">PERT Probability & Distribution</button>
+          <button class="cpm-tab" data-tab="schedule-table">CPM Schedule & Float Table</button>
+        </div>
+
+        <!-- Tab 1: Network Diagram -->
+        <div class="card cpm-view-pane" id="cpm-pane-network">
+          <div class="row-between cpm-pane-header">
+            <div>
+              <h3>Activity-on-Node (AoN) Network Graph</h3>
+              <p class="muted small">Only the selected project’s tasks and dependencies are shown. Critical activities have zero total float; select a node to edit its task.</p>
+            </div>
+            <div class="network-legend">
+              <span class="legend-chip crit-chip"><i class="dot s-crit"></i>Critical Path (Zero Float)</span>
+              <span class="legend-chip noncrit-chip"><i class="dot s-slack"></i>Non-Critical (Has Slack)</span>
+            </div>
+          </div>
+          <div class="aon-anatomy-hint">
+            <div class="anatomy-mini-node">
+              <div class="mini-h"><span>ES</span><span>Dur</span><span>EF</span></div>
+              <div class="mini-b"><strong>Task & Assignee</strong></div>
+              <div class="mini-f"><span>LS</span><span>Slack</span><span>LF</span></div>
+            </div>
+            <p class="muted small">Standard 6-point Activity-on-Node schedule block: ES = Early Start, EF = Early Finish, LS = Late Start, LF = Late Finish. Hover any node to highlight dependencies. Click to edit task.</p>
+          </div>
+          <div class="network-scroll-wrap" id="network-scroll-wrap">
+            <div class="network-canvas" id="network-canvas">
+              <svg class="network-svg" id="network-svg"></svg>
+              <div class="network-columns" id="network-columns"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: PERT Statistical Analysis -->
+        <div class="card cpm-view-pane hidden" id="cpm-pane-pert-analysis">
+          <div class="grid-2 cpm-pert-grid">
+            <div class="pert-calc-card">
+              <h3>PERT On-Time Probability Simulator</h3>
+              <p class="muted small">Use this project’s optimistic, most-likely and pessimistic task estimates to assess the chance of meeting a target date.</p>
+              
+              <div class="pert-slider-box">
+                <div class="row-between">
+                  <label for="pert-target-slider">Target Project Duration:</label>
+                  <strong class="pert-slider-value"><span id="pert-slider-days">40</span> days (<span id="pert-slider-date">-</span>)</strong>
+                </div>
+                <input type="range" id="pert-target-slider" min="10" max="80" step="1" value="40">
+                <div class="row-between muted small">
+                  <span id="pert-slider-min">10d</span>
+                  <span>Expected: <b id="pert-slider-expected">40d</b></span>
+                  <span id="pert-slider-max">80d</span>
+                </div>
+              </div>
+
+              <div class="pert-prob-display" id="pert-prob-display">
+                <div class="prob-circle-wrap">
+                  <div class="prob-pct" id="pert-prob-pct">89.4%</div>
+                  <div class="prob-label">Confidence</div>
+                </div>
+                <div class="prob-details">
+                  <div class="prob-stat-row"><span>Z-Score:</span><strong id="pert-stat-z">+1.25</strong></div>
+                  <div class="prob-stat-row"><span>Status:</span><strong id="pert-stat-status" class="prob-status-good">High Confidence</strong></div>
+                  <div class="prob-stat-row"><span>Target Delivery:</span><strong id="pert-stat-deadline">-</strong></div>
+                  <div class="prob-stat-row"><span>Official Deadline:</span><strong id="pert-stat-official">-</strong></div>
+                </div>
+              </div>
+
+              <h4 class="mt">Confidence Intervals (Normal Distribution)</h4>
+              <div class="table-wrap">
+                <table class="confidence-table">
+                  <thead><tr><th>Confidence</th><th>Z-Score</th><th>Duration Range</th><th>Projected Completion</th></tr></thead>
+                  <tbody id="pert-confidence-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="pert-chart-card">
+              <h3>Gaussian Probability Distribution</h3>
+              <p class="muted small">Standard normal distribution curve with mean (&mu;) and standard deviation (&sigma;) for the project critical path.</p>
+              <div class="pert-bell-wrap" id="pert-bell-wrap">
+                <svg id="pert-bell-svg" viewBox="0 0 500 260" preserveAspectRatio="none"></svg>
+              </div>
+              <div class="pert-formula-note">
+                <strong>How to read this chart</strong>
+                <p>The curve shows the range of likely project durations. The percentage above tells you how likely the project is to finish by the target date. A higher percentage means a better chance of finishing on time.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: CPM Schedule Table -->
+        <div class="card cpm-view-pane hidden" id="cpm-pane-schedule-table">
+          <div class="row-between cpm-pane-header">
+            <div>
+              <h3>Task schedule</h3>
+              <p class="muted small">The key dates, duration, dependencies, and schedule flexibility for each task.</p>
+            </div>
+            <button class="btn ghost small-btn" id="cpm-add-task-btn">+ Add Task</button>
+          </div>
+          <div class="table-wrap">
+            <table class="cpm-schedule-table">
+              <thead>
+                <tr>
+                  <th>Task & dates</th>
+                  <th>Assigned to</th>
+                  <th>Depends on</th>
+                  <th>Duration</th>
+                  <th>Start after</th>
+                  <th>Finish after</th>
+                  <th>Schedule flexibility</th>
+                  <th>Path status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="cpm-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== RISK ANALYSIS ===== -->
+      <section class="page" id="page-risk-analysis">
+        <div class="risk-topbar">
+          <div class="risk-title-group">
+            <h2>Project Risk Analysis & Risk Register</h2>
+            <p class="muted small">5x5 Likelihood &times; Impact Heatmap, Systemic Schedule Risk Scanner, and Mitigation Planning.</p>
+          </div>
+          <div class="risk-controls">
+            <label class="cpm-control-label">Project:
+              <select id="risk-project-select"></select>
+            </label>
+            <button class="btn" id="add-risk-btn" type="button">+ Add Risk</button>
+            <button class="btn ghost small-btn" id="export-risks-btn" type="button" title="Export Risk Register to CSV">&#128190; Export CSV</button>
+          </div>
+        </div>
+
+        <div class="risk-stats">
+          <div class="risk-stat-card safe">
+            <span class="risk-stat-lbl">Project Health Score</span>
+            <div class="risk-stat-val" id="risk-stat-health">85/100</div>
+            <span class="risk-stat-hint safe" id="risk-stat-health-badge">Healthy Condition</span>
+          </div>
+          <div class="risk-stat-card">
+            <span class="risk-stat-lbl">Active Risks (Open)</span>
+            <div class="risk-stat-val" id="risk-stat-open">4</div>
+            <span class="risk-stat-hint">In current register</span>
+          </div>
+          <div class="risk-stat-card crit">
+            <span class="risk-stat-lbl">Critical Severity Exposure</span>
+            <div class="risk-stat-val" id="risk-stat-crit" style="color:var(--risk-crit)">1</div>
+            <span class="risk-stat-hint">Score &ge; 16 (P&times;I)</span>
+          </div>
+          <div class="risk-stat-card">
+            <span class="risk-stat-lbl">Mitigated / Controlled</span>
+            <div class="risk-stat-val" id="risk-stat-mitigated">20%</div>
+            <span class="risk-stat-hint">Mitigating or closed</span>
+          </div>
+        </div>
+
+        <div class="risk-main-grid">
+          <!-- 5x5 Heatmap Matrix -->
+          <div class="heatmap-card">
+            <div class="heatmap-header">
+              <div>
+                <h3 style="font-size:1.05rem">5&times;5 Likelihood &times; Impact Risk Matrix</h3>
+                <p class="muted small">Click any cell to filter the Risk Register table below to matching risks.</p>
+              </div>
+              <div class="heatmap-legend">
+                <span class="heatmap-legend-item"><i class="heatmap-chip crit"></i>Critical (16-25)</span>
+                <span class="heatmap-legend-item"><i class="heatmap-chip high"></i>High (10-15)</span>
+                <span class="heatmap-legend-item"><i class="heatmap-chip med"></i>Medium (5-9)</span>
+                <span class="heatmap-legend-item"><i class="heatmap-chip low"></i>Low (1-4)</span>
+              </div>
+            </div>
+            <div class="heatmap-wrap" id="risk-matrix-grid"></div>
+          </div>
+
+          <!-- Systemic Schedule Risk Scanner -->
+          <div class="scanner-card">
+            <div class="scanner-header">
+              <div>
+                <h3 style="font-size:1.05rem">Systemic Schedule Risk Scanner</h3>
+                <p class="muted small">Auto-detected schedule hazards from CPM network analysis.</p>
+              </div>
+              <span class="scanner-badge">&#128269; Live Scan</span>
+            </div>
+            <div class="scanner-list" id="risk-scanner-list"></div>
+          </div>
+        </div>
+
+        <!-- Risk Register Table -->
+        <div class="register-card">
+          <div class="register-toolbar">
+            <div class="register-filters">
+              <input id="risk-search-input" placeholder="Search risks by title, owner, or mitigation...">
+              <select id="risk-filter-cat">
+                <option value="">All Categories</option>
+                <option value="Technical">Technical</option>
+                <option value="Schedule">Schedule</option>
+                <option value="Resource">Resource</option>
+                <option value="Budget">Budget</option>
+                <option value="Scope">Scope</option>
+                <option value="External">External</option>
+              </select>
+              <select id="risk-filter-sev">
+                <option value="">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <select id="risk-filter-status">
+                <option value="">All Statuses</option>
+                <option value="Open">Open</option>
+                <option value="Mitigating">Mitigating</option>
+                <option value="Monitored">Monitored</option>
+                <option value="Closed">Closed</option>
+              </select>
+            </div>
+            <span class="muted small" id="filtered-risk-count">Loading risks...</span>
+          </div>
+          <div class="table-wrap">
+            <table class="risk-table">
+              <thead>
+                <tr>
+                  <th>Risk Title & Details</th>
+                  <th>Project</th>
+                  <th style="text-align:center">Score (L&times;I)</th>
+                  <th>Severity</th>
+                  <th>Owner</th>
+                  <th>Mitigation & Contingency</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="risk-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== DELAY PREDICTION ===== -->
+      <section class="page" id="page-delay-prediction">
+        <div class="delay-topbar">
+          <div class="delay-title-group">
+            <h2>Predictive Delay & Schedule Performance (SPI)</h2>
+            <p class="muted small">Forecast delivery slippage, evaluate earned progress rates, and trace dependency cascade ripples.</p>
+          </div>
+          <div class="delay-controls">
+            <label class="cpm-control-label">Project:
+              <select id="delay-project-select"></select>
+            </label>
+            <button class="btn ghost small-btn" id="export-delay-btn" type="button" title="Export Delay Prediction to CSV">&#128190; Export CSV</button>
+          </div>
+        </div>
+
+        <!-- Predictive Hero Card -->
+        <div class="delay-hero-card" id="delay-hero-card">
+          <div class="delay-hero-top">
+            <div class="delay-hero-heading">
+              <h3>Milestone Slippage & Forecast
+                <span class="delay-hero-status-badge status-badge-good" id="delay-hero-status">Evaluating...</span>
+              </h3>
+              <p class="muted small">Statistical forecast based on actual task progress rates, critical path sensitivity, and schedule float consumption.</p>
+            </div>
+          </div>
+          <div class="delay-stat-grid">
+            <div class="delay-stat-box">
+              <span>Predicted Milestone Slippage</span>
+              <strong id="delay-stat-slip">0 days</strong>
+              <small>Compared to target deadline</small>
+            </div>
+            <div class="delay-stat-box">
+              <span>Projected Completion Date</span>
+              <strong id="delay-stat-projected-date">-</strong>
+              <small>Statistically forecasted</small>
+            </div>
+            <div class="delay-stat-box">
+              <span>Schedule Performance Index (SPI)</span>
+              <strong id="delay-stat-spi">1.00</strong>
+              <small>&ge; 1.0 On Track, &lt; 0.85 Slipping</small>
+            </div>
+            <div class="delay-stat-box">
+              <span>On-Time Confidence</span>
+              <strong id="delay-stat-prob">85%</strong>
+              <small>Probability of hitting deadline</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="delay-split-grid">
+          <!-- Cascade & Bottleneck Visualizer -->
+          <div class="cascade-card">
+            <h3>Critical Bottlenecks & Cascading Ripple Effect</h3>
+            <p class="muted small">Activities causing downstream delays along zero-float dependency paths.</p>
+            <div class="cascade-timeline-list" id="cascade-timeline-list"></div>
+          </div>
+
+          <!-- AI Schedule Recovery Recommendations -->
+          <div class="ai-actions-card">
+            <div class="ai-actions-header">
+              <div>
+                <h3 style="font-size:1.05rem">Smart Schedule Recovery Insights</h3>
+                <p class="muted small">Actionable interventions to compress lead-times and recover lost buffers.</p>
+              </div>
+              <span class="ai-spark-chip">&#10024; AI Advisor</span>
+            </div>
+            <div class="ai-recommendation-list" id="delay-ai-recommendations"></div>
+          </div>
+        </div>
+
+        <!-- Task Level Delay Prediction Table -->
+        <div class="delay-table-card">
+          <div class="row-between" style="flex-wrap:wrap; margin-bottom:14px">
+            <div>
+              <h3 style="font-size:1.05rem">Task Delay Forecast & Earned Schedule Analysis</h3>
+              <p class="muted small">Evaluates progress earned vs elapsed duration for every project activity.</p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+              <select id="delay-filter-status" style="width:auto; margin:0">
+                <option value="all">All Task Statuses</option>
+                <option value="In Progress">In Progress Only</option>
+                <option value="To Do">To Do Only</option>
+                <option value="Done">Completed</option>
+              </select>
+              <button class="btn ghost small-btn" id="delay-toggle-crit-only" type="button">⚡ Critical Path Only</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Task & Dates</th>
+                  <th>Assignee</th>
+                  <th>Path Status</th>
+                  <th>Progress (Actual vs Exp)</th>
+                  <th>SPI</th>
+                  <th>Delay (Days)</th>
+                  <th>Projected Finish</th>
+                  <th>Simulation</th>
+                </tr>
+              </thead>
+              <tbody id="delay-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== WHAT-IF SIMULATOR ===== -->
+      <section class="page" id="page-whatif-simulator">
+        <div class="whatif-topbar">
+          <div class="whatif-title-group">
+            <h2>Interactive What-If Schedule Simulator</h2>
+            <p class="muted small">Model task delays, crashing, resource shocks, and run 5,000-iteration Monte Carlo risk simulations without touching live project data.</p>
+          </div>
+          <div class="whatif-controls">
+            <label class="cpm-control-label">Project:
+              <select id="whatif-project-select"></select>
+            </label>
+            <button class="btn ghost small-btn" id="sim-reset-btn" type="button">Reset Baseline</button>
+            <button class="btn small-btn" id="sim-apply-btn" type="button" title="Commit simulated schedule changes to live data">Apply Scenario to Project</button>
+          </div>
+        </div>
+
+        <!-- Presets Bar -->
+        <div class="preset-bar">
+          <span class="preset-label">Quick Scenarios:</span>
+          <button class="preset-btn" data-preset="crit-delay" type="button">⚡ Critical Task +5d Delay</button>
+          <button class="preset-btn" data-preset="crash-schedule" type="button">🚀 Crash Critical Path (-25%)</button>
+          <button class="preset-btn" data-preset="pessimistic-pert" type="button">🌧️ Worst-Case PERT (Pessimistic)</button>
+          <button class="preset-btn" data-preset="resource-out" type="button">🤒 Key Dev Unavailable (+5d)</button>
+        </div>
+
+        <!-- Scenario Impact Banner -->
+        <div class="whatif-impact-card">
+          <div class="whatif-impact-top">
+            <div>
+              <span class="eyebrow" style="color:var(--sim-primary)">SIMULATION RESULTS (CPM RECALCULATION)</span>
+              <h3 style="font-size:1.15rem; margin-top:2px">Live Scenario vs Baseline Comparison</h3>
+            </div>
+          </div>
+          <div class="whatif-impact-grid">
+            <div class="impact-stat-box">
+              <span>Project Duration</span>
+              <strong id="sim-stat-duration-sim">40 days</strong>
+              <small>Baseline: <span id="sim-stat-duration-base">40 days</span></small>
+              <div class="impact-delta delta-same" id="sim-stat-duration-delta">0d (Identical)</div>
+            </div>
+            <div class="impact-stat-box">
+              <span>Projected Finish Date</span>
+              <strong id="sim-stat-finish-sim">-</strong>
+              <small>Baseline: <span id="sim-stat-finish-base">-</span></small>
+              <div class="impact-delta delta-same" id="sim-stat-finish-delta">On schedule</div>
+            </div>
+            <div class="impact-stat-box">
+              <span>Critical Path Health</span>
+              <strong>Dynamic DAG</strong>
+              <small>Automated loop & float evaluation</small>
+              <div class="impact-delta delta-same">Real-time forward pass</div>
+            </div>
+            <div class="impact-stat-box">
+              <span>Monte Carlo Uncertainty</span>
+              <strong>5,000 Iterations</strong>
+              <small>Triangular & Beta distribution</small>
+              <div class="impact-delta delta-same">Probabilistic P50-P95</div>
+            </div>
+          </div>
+          <div class="path-shift-alert hidden" id="sim-path-shift-alert"></div>
+        </div>
+
+        <div class="whatif-main-split">
+          <!-- Left: Studio Sliders -->
+          <div class="studio-card">
+            <h3>Interactive Task Adjustment Studio</h3>
+            <p class="muted small">Select any task and adjust duration to simulate crashing or delays.</p>
+
+            <div class="slider-control-group">
+              <label style="margin-bottom:0">Select Activity to Modify:
+                <select id="sim-task-select"></select>
+              </label>
+
+              <div class="slider-header-row">
+                <span style="font-size:0.85rem; font-weight:600">Simulate Duration Change (&plusmn; Days):</span>
+                <span class="slider-val-bubble" id="sim-slider-val">0 days</span>
+              </div>
+              <input type="range" id="sim-delta-slider" min="-10" max="30" step="1" value="0">
+              <div class="row-between muted small" style="margin-bottom:0">
+                <span>-10d (Fast-Track / Crash)</span>
+                <span>0d (Baseline)</span>
+                <span>+30d (Severe Delay)</span>
+              </div>
+            </div>
+
+            <div class="scenario-adjustments-card">
+              <span class="muted small" style="font-weight:700">ACTIVE SCENARIO MODIFICATIONS:</span>
+              <div id="sim-active-adjustments" style="margin-top:6px"></div>
+            </div>
+          </div>
+
+          <!-- Right: Comparative Table -->
+          <div class="card" style="padding:22px">
+            <div class="row-between" style="margin-bottom:10px">
+              <div>
+                <h3 style="font-size:1.05rem">Schedule Comparison (Baseline vs Scenario)</h3>
+                <p class="muted small">Shows task-by-task date movement and float impact.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="sim-compare-table">
+                <thead>
+                  <tr>
+                    <th>Task</th>
+                    <th>Base Dur</th>
+                    <th>Sim Dur</th>
+                    <th>Delta</th>
+                    <th>Simulated Dates</th>
+                    <th>Path Status</th>
+                  </tr>
+                </thead>
+                <tbody id="sim-compare-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monte Carlo Probabilistic Analysis -->
+        <div class="mc-card">
+          <div class="mc-header">
+            <div>
+              <span class="eyebrow" style="color:var(--sim-primary)">ADVANCED STOCHASTIC SIMULATION</span>
+              <h3 style="font-size:1.2rem; margin-top:2px">Monte Carlo Project Completion Probability</h3>
+              <p class="muted small">Samples 1,000 to 5,000 possible project execution runs from 3-point PERT ranges ($O, M, P$) to evaluate completion horizons.</p>
+            </div>
+            <div class="mc-controls">
+              <label class="cpm-control-label">Runs:
+                <select id="mc-runs-select">
+                  <option value="500">500 runs</option>
+                  <option value="1000" selected>1,000 runs (Standard)</option>
+                  <option value="2500">2,500 runs (High Precision)</option>
+                  <option value="5000">5,000 runs (Exhaustive)</option>
+                </select>
+              </label>
+              <button class="btn" id="mc-run-btn" type="button">&#9654; Run Monte Carlo</button>
+            </div>
+          </div>
+
+          <div class="mc-percentiles-grid">
+            <div class="mc-p-box"><span>P50 (Median Expected)</span><strong id="mc-p50">-</strong></div>
+            <div class="mc-p-box"><span>P75 (75% Confidence)</span><strong id="mc-p75">-</strong></div>
+            <div class="mc-p-box"><span>P85 (85% Target)</span><strong id="mc-p85">-</strong></div>
+            <div class="mc-p-box"><span>P90 (90% Safe Buffer)</span><strong id="mc-p90">-</strong></div>
+            <div class="mc-p-box"><span>On-Time Deadline Chance</span><strong id="mc-ontime-prob">-</strong></div>
+          </div>
+
+          <div class="mc-chart-box">
+            <svg id="mc-histogram-svg"></svg>
+          </div>
+
+          <div class="card" style="padding:16px 20px; border:1px solid var(--border)">
+            <h4 style="font-size:0.95rem; margin-bottom:8px">Task Criticality Index (Merge-Point Risk)</h4>
+            <p class="muted small" style="margin-bottom:12px">The percentage of simulation iterations where each task fell on the Critical Path. Identifies near-critical activities that traditional CPM overlooks.</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Activity</th>
+                    <th>Assignee</th>
+                    <th>Criticality Frequency</th>
+                    <th>Risk Category</th>
+                  </tr>
+                </thead>
+                <tbody id="mc-criticality-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      
 
       <section class="page" id="page-tasks">
         <div class="toolbar">
           <input id="t-search" placeholder="Search tasks...">
           <select id="t-status"><option value="">All statuses</option><option>To Do</option><option>In Progress</option><option>Done</option></select>
           <select id="t-priority"><option value="">All priorities</option><option>High</option><option>Medium</option><option>Low</option></select>
+          <select id="t-cpm"><option value="">All Path Types</option><option value="critical">⚡ Critical Path Only</option><option value="slack">Has Slack (Non-critical)</option></select>
           <button class="btn" id="add-task">+ Add task</button>
         </div>
-        <div class="card table-wrap"><table><thead><tr><th>Task</th><th>Assignee</th><th>Priority</th><th>Status</th><th>Deadline</th><th>Progress</th><th></th></tr></thead><tbody id="task-body"></tbody></table></div>
+        <div class="card table-wrap"><table><thead><tr><th>Task</th><th>Assignee</th><th>Priority</th><th>Status</th><th>Deadline</th><th>Progress</th><th>Path / Float</th><th></th></tr></thead><tbody id="task-body"></tbody></table></div>
       </section>
 
       <section class="page" id="page-team">
@@ -107,9 +669,20 @@
         </div>
       </section>
 
+      
+
       <section class="page" id="page-settings">
-        <div class="card"><h2>Settings</h2>
-          <p class="muted">Your data is saved in this browser (LocalStorage).</p>
+        <div class="card settings-card"><h2>Settings</h2>
+          <p class="muted">Make ProjectPulse comfortable for your workspace.</p>
+          <div class="setting-row">
+            <div class="setting-copy"><strong>Dark mode</strong><p>Use a darker interface in low-light environments.</p></div>
+            <label class="theme-switch" for="theme-toggle" aria-label="Toggle dark mode">
+              <input id="theme-toggle" type="checkbox" role="switch" aria-describedby="theme-state">
+              <span class="theme-switch-track" aria-hidden="true"></span>
+            </label>
+          </div>
+          <p class="muted small" id="theme-state" aria-live="polite">Light mode is enabled.</p>
+          <div class="setting-row"><div class="setting-copy"><strong>Local data</strong><p>Your projects and tasks are saved in this browser (LocalStorage).</p></div></div>
           <button class="btn danger" id="reset-data">Reset demo data</button></div>
       </section>
     </main>
@@ -128,6 +701,69 @@
   </form>
 </div>
 
+
+<!-- ===== RISK MODAL ===== -->
+<div class="modal hidden" id="risk-modal">
+  <form class="modal-card" id="risk-modal-form" novalidate>
+    <h2 id="risk-modal-title">Add Project Risk</h2>
+    <label>Risk title<input id="rm-title" placeholder="e.g. Third-party authentication failure" required></label>
+    <div class="two">
+      <label>Project<select id="rm-project"></select></label>
+      <label>Associated Task<select id="rm-task"></select></label>
+    </div>
+    <div class="two">
+      <label>Category
+        <select id="rm-cat">
+          <option value="Technical">Technical</option>
+          <option value="Schedule">Schedule</option>
+          <option value="Resource">Resource</option>
+          <option value="Budget">Budget</option>
+          <option value="Scope">Scope</option>
+          <option value="External">External</option>
+        </select>
+      </label>
+      <label>Risk Owner<select id="rm-owner"></select></label>
+    </div>
+    <div class="two">
+      <label>Likelihood (1 to 5)
+        <select id="rm-likelihood">
+          <option value="1">1 - Rare (0-10%)</option>
+          <option value="2">2 - Unlikely (11-30%)</option>
+          <option value="3" selected>3 - Moderate (31-50%)</option>
+          <option value="4">4 - Likely (51-80%)</option>
+          <option value="5">5 - Almost Certain (81-100%)</option>
+        </select>
+      </label>
+      <label>Impact (1 to 5)
+        <select id="rm-impact">
+          <option value="1">1 - Negligible</option>
+          <option value="2">2 - Minor</option>
+          <option value="3" selected>3 - Moderate</option>
+          <option value="4">4 - Major</option>
+          <option value="5">5 - Catastrophic</option>
+        </select>
+      </label>
+    </div>
+    <div id="rm-score-preview" style="margin-bottom:12px; font-size:0.88rem;"></div>
+    <label>Description<textarea id="rm-desc" rows="2" placeholder="Describe root cause and potential impact..."></textarea></label>
+    <label>Mitigation Strategy (Preventative)<textarea id="rm-mitigation" rows="2" placeholder="Actions taken now to reduce likelihood or impact..."></textarea></label>
+    <label>Contingency Plan (If risk occurs)<textarea id="rm-contingency" rows="2" placeholder="Action plan if risk event triggers..."></textarea></label>
+    <label>Status
+      <select id="rm-status">
+        <option value="Open">Open</option>
+        <option value="Mitigating">Mitigating</option>
+        <option value="Monitored">Monitored</option>
+        <option value="Closed">Closed</option>
+      </select>
+    </label>
+    <p class="form-error" id="rm-error"></p>
+    <div class="row-between">
+      <button type="button" class="btn ghost" id="rm-cancel">Cancel</button>
+      <button class="btn" type="submit">Save Risk</button>
+    </div>
+  </form>
+</div>
+
 <!-- ===== TASK MODAL ===== -->
 <div class="modal hidden" id="task-modal">
   <form class="modal-card" id="task-form" novalidate>
@@ -140,7 +776,33 @@
     <div class="two"><label>Priority<select id="f-priority"><option>High</option><option selected>Medium</option><option>Low</option></select></label>
       <label>Status<select id="f-status"><option>To Do</option><option>In Progress</option><option>Done</option></select></label></div>
     <div class="two"><label>Progress (%)<input id="f-progress" type="number" min="0" max="100" value="0"></label>
-      <label>Depends on<select id="f-dep"></select></label></div>
+      <label>Primary dependency<select id="f-dep"></select></label></div>
+
+    <!-- Multi-predecessor selection -->
+    <div class="deps-container">
+      <label style="margin-bottom:4px">All Predecessors / Dependencies (CPM Network):</label>
+      <div id="f-deps-list" class="deps-choice-list"></div>
+      <p class="muted small" style="margin-top:4px">Select activities that must complete before this task can start.</p>
+    </div>
+
+    <!-- PERT 3-Point Estimate Section -->
+    <div class="pert-section">
+      <div class="pert-title-row">
+        <strong>PERT 3-Point Duration Estimates (Days)</strong>
+        <button type="button" class="link-btn small" id="f-autofill-pert" style="font-size:0.78rem">Auto-estimate from dates</button>
+      </div>
+      <div class="three-col">
+        <label>Optimistic (O)<input id="f-opt" type="number" min="0.5" step="0.5" placeholder="Best case"></label>
+        <label>Most Likely (M)<input id="f-likely" type="number" min="0.5" step="0.5" placeholder="Normal case"></label>
+        <label>Pessimistic (P)<input id="f-pess" type="number" min="0.5" step="0.5" placeholder="Worst case"></label>
+      </div>
+      <div class="pert-preview-box" id="f-pert-preview">
+        <span>Expected (T<sub>e</sub>): <strong id="f-preview-te">-</strong></span>
+        <span>Std Dev (&sigma;): <strong id="f-preview-sigma">-</strong></span>
+        <span>Variance (&sigma;<sup>2</sup>): <strong id="f-preview-var">-</strong></span>
+      </div>
+    </div>
+
     <p class="form-error" id="f-error"></p>
     <div class="row-between"><button type="button" class="btn ghost" id="f-cancel">Cancel</button><button class="btn">Save task</button></div>
   </form>
@@ -149,6 +811,10 @@
 
 <!-- app.js first: it creates the shared PP object the others use -->
 <script src="js/app.js" defer></script>
+<script src="js/cpm-pert.js" defer></script>
+<script src="js/risk-analysis.js" defer></script>
+<script src="js/delay-prediction.js" defer></script>
+<script src="js/whatif-simulator.js" defer></script>
 <script src="js/dashboard.js" defer></script>
 <script src="js/projects.js" defer></script>
 <script src="js/tasks.js" defer></script>

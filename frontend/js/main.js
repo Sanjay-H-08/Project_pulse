@@ -21,7 +21,18 @@ function setAuthMode(signup) {
   $("auth-error").textContent = "";
 }
 
+function applyTheme(theme) {
+  const selected = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = selected;
+  localStorage.setItem("pp_theme", selected);
+  const toggle = $("theme-toggle");
+  const state = $("theme-state");
+  if (toggle) toggle.checked = selected === "dark";
+  if (state) state.textContent = selected === "dark" ? "Dark mode is enabled." : "Light mode is enabled.";
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  applyTheme(localStorage.getItem("pp_theme") || "light");
   PP.buildNav();
   window.addEventListener("hashchange", () => !$("app").classList.contains("hidden") && PP.showPage(location.hash.replace("#", "")));
   $("menu-button").onclick = PP.openSidebar;
@@ -42,6 +53,8 @@ document.addEventListener("DOMContentLoaded", () => {
     showApp();
   };
   $("logout").onclick = e => { e.preventDefault(); localStorage.removeItem("pp_user"); showApp(); };
+
+  $("theme-toggle").onchange = event => applyTheme(event.target.checked ? "dark" : "light");
 
   $("reset-data").onclick = () => {
     if (!confirm("Reset all projects and tasks to the demo data?")) return;
