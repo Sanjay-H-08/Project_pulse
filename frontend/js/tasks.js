@@ -29,9 +29,9 @@ window.removeTask = id => {
 
 const opts = (arr, sel) => arr.map(([v, l]) => `<option value="${v}" ${v == sel ? "selected" : ""}>${PP.esc(l)}</option>`).join("");
 
-PP.openTask = id => {
+PP.openTask = (id, projectId) => {
   editingId = id || null;
-  const t = id ? PP.data.tasks.find(x => x.id === id) : { project: (PP.data.projects[0] || {}).id, assignee: PP.data.team[0], name: "", start: PP.day(0), end: PP.day(7), priority: "Medium", status: "To Do", progress: 0, dep: 0 };
+  const t = id ? PP.data.tasks.find(x => x.id === id) : { project: projectId || (PP.data.projects[0] || {}).id, assignee: PP.data.team[0], name: "", start: PP.day(0), end: PP.day(7), priority: "Medium", status: "To Do", progress: 0, dep: 0 };
   $("modal-title").textContent = id ? "Edit task" : "Add task";
   $("f-project").innerHTML = opts(PP.data.projects.map(p => [p.id, p.name]), t.project);
   $("f-assignee").innerHTML = opts(PP.data.team.map(m => [m, m]), t.assignee);

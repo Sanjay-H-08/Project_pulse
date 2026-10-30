@@ -60,12 +60,14 @@
           <div class="row-between"><h2>All projects</h2><button class="btn" id="new-project">+ New Project</button></div>
           <div class="cards" id="project-cards"></div>
         </div>
+        <div id="project-details" class="hidden"></div>
         <div class="card hidden" id="wizard">
           <div class="steps" id="steps"></div>
           <div id="step-1"><label>Project name<input id="p-name"></label>
             <label>Description<textarea id="p-desc" rows="3"></textarea></label></div>
           <div id="step-2" class="hidden"><label>Deadline<input id="p-deadline" type="date"></label>
-            <label>Number of team members<input id="p-members" type="number" min="1" max="4" value="3"></label></div>
+            <label>Number of team members<input id="p-members" type="number" min="1" max="50" value="3" readonly></label>
+            <label>Assign team members</label><div id="p-team-choices" class="member-choices"></div></div>
           <div id="step-3" class="hidden"><label>Project requirements<textarea id="p-req" rows="4" placeholder="e.g. Mobile friendly, login system, admin panel"></textarea></label>
             <button class="btn ghost" id="gen-plan" type="button">&#10024; Generate Project Plan with Gemini AI</button>
             <div id="plan-preview"></div></div>
@@ -75,7 +77,7 @@
       </section>
 
       <section class="page" id="page-gantt">
-        <div class="row-between"><h2>Project timeline</h2>
+        <div class="row-between gantt-toolbar"><div><h2>Project timeline</h2><label class="gantt-project-label">Show timeline for<select id="gantt-project"><option value="all">All projects</option></select></label></div>
           <div class="toggle"><button id="zoom-day" class="active">Days</button><button id="zoom-week">Weeks</button></div></div>
         <div class="legend"><i class="dot s-todo"></i>To Do <i class="dot s-prog"></i>In Progress <i class="dot s-done"></i>Done <i class="dot today-dot"></i>Today</div>
         <div class="card gantt-card"><div id="gantt"></div></div>
@@ -92,7 +94,10 @@
         <div class="card table-wrap"><table><thead><tr><th>Task</th><th>Assignee</th><th>Priority</th><th>Status</th><th>Deadline</th><th>Progress</th><th></th></tr></thead><tbody id="task-body"></tbody></table></div>
       </section>
 
-      <section class="page" id="page-team"><div class="cards" id="team-cards"></div></section>
+      <section class="page" id="page-team">
+        <div class="row-between"><div><h2>Team members</h2><p class="muted small">Manage people who can be assigned to project tasks.</p></div><button class="btn" id="add-member">+ Add Member</button></div>
+        <div class="cards" id="team-cards"></div>
+      </section>
 
       <section class="page" id="page-ai-assistant">
         <div class="card chat">
@@ -109,6 +114,18 @@
       </section>
     </main>
   </div>
+</div>
+
+<!-- ===== TEAM MEMBER MODAL ===== -->
+<div class="modal hidden" id="member-modal">
+  <form class="modal-card" id="member-form" novalidate>
+    <h2>Add team member</h2>
+    <label>Full name<input id="member-name" placeholder="e.g. Priya Sharma" required></label>
+    <label>Email<input id="member-email" type="email" placeholder="priya@college.edu"></label>
+    <label>Role<input id="member-role" placeholder="e.g. UI Designer"></label>
+    <p class="form-error" id="member-error"></p>
+    <div class="row-between"><button type="button" class="btn ghost" id="member-cancel">Cancel</button><button class="btn" type="submit">Add member</button></div>
+  </form>
 </div>
 
 <!-- ===== TASK MODAL ===== -->

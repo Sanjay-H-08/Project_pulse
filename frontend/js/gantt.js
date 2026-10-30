@@ -4,7 +4,17 @@ let dayWidth = 28;
 const cls = { "To Do": "s-todo", "In Progress": "s-prog", "Done": "s-done" };
 
 PP.renders.gantt = () => {
-  const tasks = PP.data.tasks.slice().sort((a, b) => a.start.localeCompare(b.start));
+  const selector = $("gantt-project");
+  if (selector) {
+    const previous = PP.ganttProjectId ? String(PP.ganttProjectId) : (selector.value || "all");
+    selector.innerHTML = '<option value="all">All projects</option>' +
+      PP.data.projects.map(p => `<option value="${p.id}">${PP.esc(p.name)}</option>`).join("");
+    selector.value = PP.data.projects.some(p => String(p.id) === previous) ? previous : "all";
+    PP.ganttProjectId = selector.value === "all" ? null : Number(selector.value);
+  }
+  const chosen = selector && selector.value !== "all" ? Number(selector.value) : null;
+  const tasks = PP.data.tasks.filter(t => chosen === null || Number(t.project) === chosen)
+    .slice().sort((a, b) => a.start.localeCompare(b.start));
   if (!tasks.length) return $("gantt").innerHTML = '<p class="empty">No tasks yet. Add tasks to see the timeline.</p>';
   const first = tasks.reduce((m, t) => t.start < m ? t.start : m, PP.day(0));
   const last = tasks.reduce((m, t) => t.end > m ? t.end : m, PP.day(0));
@@ -32,6 +42,7 @@ PP.renders.gantt = () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   const zoom = (w, on, off) => { dayWidth = w; $(on).classList.add("active"); $(off).classList.remove("active"); PP.renders.gantt(); };
+  $("gantt-project").onchange = () => { PP.ganttProjectId = $("gantt-project").value === "all" ? null : Number($("gantt-project").value); PP.renders.gantt(); };
   $("zoom-day").onclick = () => zoom(28, "zoom-day", "zoom-week");
   $("zoom-week").onclick = () => zoom(10, "zoom-week", "zoom-day");
 });

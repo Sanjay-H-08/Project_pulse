@@ -19,3 +19,5 @@
 .g-fill{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.28)}
 .g-bar span{position:relative}
 .g-today{position:absolute;top:0;bottom:0;width:2px;background:var(--danger);z-index:3}
+
+.gantt-toolbar{align-items:flex-start}

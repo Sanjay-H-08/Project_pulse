@@ -54,3 +54,14 @@ td select{width:auto;margin:0;padding:5px 8px}
 #toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:300}
 .toast{background:var(--text);color:#fff;padding:12px 18px;border-radius:10px;box-shadow:var(--shadow);animation:fade .25s}
 .toast.success{background:var(--success)}.toast.error{background:var(--danger)}
+
+/* Team management and project assignment */
+.member-choices{display:flex;flex-wrap:wrap;gap:9px;margin:8px 0 14px}
+.member-choice{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:10px;padding:8px 11px;background:#fff;cursor:pointer;margin:0}
+.member-choice input{width:auto;margin:0;accent-color:var(--primary)}
+.assign-members{margin-top:14px;border-top:1px solid var(--border);padding-top:12px}
+.assign-members summary{color:var(--primary);font-weight:600;cursor:pointer}
+.assign-members .btn{margin-top:4px}
+.gantt-project-label{display:block;max-width:280px;margin:5px 0 0}
+.gantt-project-label select{margin-top:4px}
+#member-modal .modal-card{max-width:460px}
