@@ -1,0 +1,25 @@
+@media (max-width:900px){
+  .sidebar{transform:translateX(-100%)}.sidebar.open{transform:none}
+  .sidebar-overlay.show{display:block;position:fixed;inset:0;background:rgba(31,42,68,.45);z-index:90}
+  .main-area{margin-left:0}.menu-button{display:block}
+  .topbar{padding:0 16px}.content{padding:16px}
+  .grid-2{grid-template-columns:1fr}
+}
+@media (max-width:600px){
+  .two{grid-template-columns:1fr}.g-left{width:150px}
+  .step{font-size:.7rem}.msg{max-width:92%}#top-new{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+@media(max-width:900px){
+  .project-detail-grid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .project-detail-top{align-items:stretch}
+  .project-detail-actions{width:100%}
+  .project-detail-actions .btn{flex:1}
+  .project-hero-heading{flex-direction:column}
+  .project-facts,.project-detail-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .project-task-main{flex-direction:column}
+  .project-task-status{align-items:flex-start}
+}
