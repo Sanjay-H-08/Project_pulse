@@ -11,7 +11,7 @@
 .late{color:var(--danger)}
 .proj-card h3{font-size:1.05rem;margin-bottom:4px}.proj-card p{font-size:.88rem;color:var(--muted);margin-bottom:12px}
 .proj-meta{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin:10px 0}
-.status-Active{background:var(--soft);color:var(--primary)}.status-Completed{background:#e3f6ee;color:var(--success)}
+.status-Active{background:var(--soft);color:var(--primary)}.status-Completed{background:#23443b;color:#a6e1ca}
 .steps{display:flex;gap:8px;margin-bottom:22px}
 .step{flex:1;padding:8px;border-radius:10px;background:var(--bg);color:var(--muted);text-align:center;font-size:.85rem;font-weight:600}
 .step.on{background:var(--primary);color:#fff}.step.done{background:var(--soft);color:var(--primary)}
@@ -24,7 +24,7 @@
 .msg{max-width:78%;padding:11px 15px;border-radius:14px;font-size:.92rem;white-space:pre-line}
 .msg.ai{background:var(--soft);align-self:flex-start}.msg.me{background:var(--primary);color:#fff;align-self:flex-end}
 .chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 22px 12px}
-.chip{border:1px solid var(--border);background:#fff;border-radius:20px;padding:6px 14px;cursor:pointer;font:inherit;font-size:.82rem;color:var(--primary)}
+.chip{border:1px solid var(--border);background:var(--surface);border-radius:20px;padding:6px 14px;cursor:pointer;font:inherit;font-size:.82rem;color:var(--primary)}
 .chip:hover{background:var(--soft)}
 .chat-form{display:flex;gap:10px;padding:14px 22px;border-top:1px solid var(--border)}.chat-form input{margin:0}
 
@@ -61,9 +61,9 @@
 .project-task-progress{display:flex;align-items:center;gap:10px}
 .project-task-progress .bar{flex:1}
 .project-task-progress span{font-size:.78rem;color:var(--muted);min-width:34px;text-align:right}
-.task-status-done{background:#e3f6ee;color:var(--success)}
-.task-status-progress{background:#eaf0ff;color:var(--primary)}
-.task-status-todo{background:#f0f2f7;color:var(--muted)}
+.task-status-done{background:#23443b;color:#a6e1ca}
+.task-status-progress{background:#2b4053;color:#c5def2}
+.task-status-todo{background:#303b47;color:var(--muted)}
 .project-member-list{display:grid;gap:12px}
 .project-member{display:flex;align-items:center;gap:10px}
 .project-member>div{display:flex;flex-direction:column}
@@ -88,3 +88,8 @@
 html[data-theme="light"] .badge-overdue{background:#fde8e9;color:#c65a5a;border-color:#f5c2c7}
 html[data-theme="light"] .badge-blocked{background:#fff3da;color:#b9770e;border-color:#fae1b3}
 html[data-theme="light"] .badge-atrisk{background:#f5e6fc;color:#8833aa;border-color:#e4c1f2}
+html[data-theme="light"] .status-Completed{background:#e3f6ee;color:var(--success)}
+html[data-theme="light"] .chip{background:#fff}
+html[data-theme="light"] .task-status-done{background:#e3f6ee;color:var(--success)}
+html[data-theme="light"] .task-status-progress{background:#eaf0ff;color:var(--primary)}
+html[data-theme="light"] .task-status-todo{background:#f0f2f7;color:var(--muted)}

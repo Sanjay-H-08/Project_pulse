@@ -1,14 +1,14 @@
 /* risk-analysis.css: Styling for Risk Matrix Heatmap, Risk Register, and Health Gauges */
 :root {
-  --risk-crit: #e5484d;
-  --risk-crit-bg: #fee2e2;
-  --risk-high: #f97316;
-  --risk-high-bg: #ffedd5;
-  --risk-med: #eab308;
-  --risk-med-bg: #fef9c3;
-  --risk-low: #10b981;
-  --risk-low-bg: #d1fae5;
-  --risk-border: #e2e8f0;
+  --risk-crit: #ef8589;
+  --risk-crit-bg: #4a2d33;
+  --risk-high: #e5bb72;
+  --risk-high-bg: #493d2a;
+  --risk-med: #d4b162;
+  --risk-med-bg: #433d26;
+  --risk-low: #78c3a8;
+  --risk-low-bg: #23443b;
+  --risk-border: var(--border);
 }
 
 /* Header & Top Bar */
@@ -185,10 +185,10 @@
 }
 
 /* Heatmap cell color grades */
-.heat-crit { background: #fee2e2; color: #991b1b; }
-.heat-high { background: #ffedd5; color: #9a3412; }
-.heat-med  { background: #fef9c3; color: #854d0e; }
-.heat-low  { background: #d1fae5; color: #065f46; }
+.heat-crit { background: rgba(229, 72, 77, 0.25); color: #fca5a5; }
+.heat-high { background: rgba(249, 115, 22, 0.25); color: #fdba74; }
+.heat-med  { background: rgba(234, 179, 8, 0.25);  color: #fde047; }
+.heat-low  { background: rgba(16, 185, 129, 0.25); color: #86efac; }
 
 html[data-theme="dark"] .heat-crit { background: rgba(229, 72, 77, 0.25); color: #fca5a5; }
 html[data-theme="dark"] .heat-high { background: rgba(249, 115, 22, 0.25); color: #fdba74; }
@@ -212,8 +212,8 @@ html[data-theme="dark"] .heat-low  { background: rgba(16, 185, 129, 0.25); color
   margin-bottom: 12px;
 }
 .scanner-badge {
-  background: #eff6ff;
-  color: #1e40af;
+  background: #1e293b;
+  color: #93c5fd;
   border-radius: 20px;
   padding: 3px 10px;
   font-size: 0.74rem;
@@ -314,10 +314,10 @@ html[data-theme="dark"] .scanner-badge {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.risk-badge.critical { background: #fee2e2; color: #b91c1c; }
-.risk-badge.high     { background: #ffedd5; color: #c2410c; }
-.risk-badge.medium   { background: #fef9c3; color: #a16207; }
-.risk-badge.low      { background: #d1fae5; color: #047857; }
+.risk-badge.critical { background: rgba(229, 72, 77, 0.3); color: #fca5a5; }
+.risk-badge.high     { background: rgba(249, 115, 22, 0.3); color: #fdba74; }
+.risk-badge.medium   { background: rgba(234, 179, 8, 0.3);  color: #fde047; }
+.risk-badge.low      { background: rgba(16, 185, 129, 0.3); color: #86efac; }
 
 html[data-theme="dark"] .risk-badge.critical { background: rgba(229, 72, 77, 0.3); color: #fca5a5; }
 html[data-theme="dark"] .risk-badge.high     { background: rgba(249, 115, 22, 0.3); color: #fdba74; }
@@ -375,16 +375,16 @@ html[data-theme="dark"] .risk-badge.low      { background: rgba(16, 185, 129, 0.
   font-weight: 700;
   font-size: 0.85rem;
 }
-.risk-score-pill.crit { background: #fee2e2; color: #b91c1c; }
-.risk-score-pill.high { background: #ffedd5; color: #c2410c; }
-.risk-score-pill.med  { background: #fef9c3; color: #a16207; }
-.risk-score-pill.low  { background: #d1fae5; color: #047857; }
+.risk-score-pill.crit { background: rgba(229, 72, 77, 0.3); color: #fca5a5; }
+.risk-score-pill.high { background: rgba(249, 115, 22, 0.3); color: #fdba74; }
+.risk-score-pill.med  { background: rgba(234, 179, 8, 0.3);  color: #fde047; }
+.risk-score-pill.low  { background: rgba(16, 185, 129, 0.3); color: #86efac; }
 
 html[data-theme="dark"] .risk-score-pill.crit { background: rgba(229, 72, 77, 0.3); color: #fca5a5; }
 html[data-theme="dark"] .risk-score-pill.high { background: rgba(249, 115, 22, 0.3); color: #fdba74; }
 html[data-theme="dark"] .risk-score-pill.med  { background: rgba(234, 179, 8, 0.3);  color: #fde047; }
 html[data-theme="dark"] .risk-score-pill.low  { background: rgba(16, 185, 129, 0.3); color: #86efac; }
-.cat-tag.cat-task { background: #eff6ff; color: #1e40af; }
+.cat-tag.cat-task { background: #1e293b; color: #93c5fd; }
 html[data-theme="dark"] .cat-tag.cat-task { background: #1e293b; color: #93c5fd; }
 
 /* Status selector styling */
@@ -396,3 +396,30 @@ html[data-theme="dark"] .cat-tag.cat-task { background: #1e293b; color: #93c5fd;
   border: 1px solid var(--border);
   cursor: pointer;
 }
+
+/* Light theme overrides */
+html[data-theme="light"] {
+  --risk-crit: #e5484d;
+  --risk-crit-bg: #fee2e2;
+  --risk-high: #f97316;
+  --risk-high-bg: #ffedd5;
+  --risk-med: #eab308;
+  --risk-med-bg: #fef9c3;
+  --risk-low: #10b981;
+  --risk-low-bg: #d1fae5;
+  --risk-border: #e2e8f0;
+}
+html[data-theme="light"] .heat-crit { background: #fee2e2; color: #991b1b; }
+html[data-theme="light"] .heat-high { background: #ffedd5; color: #9a3412; }
+html[data-theme="light"] .heat-med  { background: #fef9c3; color: #854d0e; }
+html[data-theme="light"] .heat-low  { background: #d1fae5; color: #065f46; }
+html[data-theme="light"] .scanner-badge { background: #eff6ff; color: #1e40af; }
+html[data-theme="light"] .risk-badge.critical { background: #fee2e2; color: #b91c1c; }
+html[data-theme="light"] .risk-badge.high     { background: #ffedd5; color: #c2410c; }
+html[data-theme="light"] .risk-badge.medium   { background: #fef9c3; color: #a16207; }
+html[data-theme="light"] .risk-badge.low      { background: #d1fae5; color: #047857; }
+html[data-theme="light"] .risk-score-pill.crit { background: #fee2e2; color: #b91c1c; }
+html[data-theme="light"] .risk-score-pill.high { background: #ffedd5; color: #c2410c; }
+html[data-theme="light"] .risk-score-pill.med  { background: #fef9c3; color: #a16207; }
+html[data-theme="light"] .risk-score-pill.low  { background: #d1fae5; color: #047857; }
+html[data-theme="light"] .cat-tag.cat-task { background: #eff6ff; color: #1e40af; }

@@ -1,13 +1,13 @@
 /* cpm-pert.css: Styling for Critical Path Method (CPM) and PERT Analysis */
 :root {
-  --cpm-critical: #e5484d;
-  --cpm-critical-gradient: linear-gradient(135deg, #e5484d, #f43f5e);
-  --cpm-critical-soft: #fde8e9;
-  --cpm-critical-border: #f87171;
-  --cpm-slack: #3b6cf6;
-  --cpm-slack-soft: #eaf0ff;
-  --cpm-border: #e1e8f5;
-  --cpm-node-bg: #ffffff;
+  --cpm-critical: #ef8589;
+  --cpm-critical-gradient: linear-gradient(135deg, #d96e75, #bd777c);
+  --cpm-critical-soft: #38272c;
+  --cpm-critical-border: #87545b;
+  --cpm-slack: #91c8dc;
+  --cpm-slack-soft: #243b46;
+  --cpm-border: var(--border);
+  --cpm-node-bg: var(--surface);
 }
 
 /* Header & Controls */
@@ -65,7 +65,7 @@
 .cpm-chain-card {
   margin-bottom: 20px;
   border-left: 4px solid var(--cpm-critical);
-  background: linear-gradient(to right, #fff5f5, #ffffff);
+  background: linear-gradient(110deg, #30262a 0%, var(--surface) 72%);
 }
 .cpm-chain-header {
   display: flex;
@@ -92,11 +92,11 @@
 .cpm-chain-step {
   display: inline-flex;
   align-items: center;
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--cpm-critical-border);
   border-radius: 8px;
   padding: 6px 12px;
-  box-shadow: 0 2px 6px rgba(229, 72, 77, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text);
@@ -209,12 +209,12 @@
 .anatomy-mini-node {
   width: 170px;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 0.65rem;
   overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
 }
 .mini-h, .mini-f {
   display: flex;
@@ -281,10 +281,11 @@
 
 /* Activity-on-Node Card */
 .aon-node {
-  background: #ffffff;
+  background: var(--surface);
+  color: var(--text);
   border: 2px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(31, 42, 68, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
   width: 210px;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
@@ -328,7 +329,7 @@
 .node-dur {
   color: var(--text);
   font-weight: 800;
-  background: #fff;
+  background: var(--soft);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 6px;
@@ -449,11 +450,11 @@
   display: flex;
   align-items: center;
   gap: 20px;
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
 }
 .prob-circle-wrap {
   display: flex;
@@ -463,9 +464,9 @@
   width: 125px;
   height: 125px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--soft), #ffffff);
+  background: linear-gradient(135deg, var(--soft), var(--surface));
   border: 4px solid var(--primary);
-  box-shadow: 0 6px 18px rgba(59, 108, 246, 0.15);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
   text-align: center;
   padding: 8px;
@@ -555,7 +556,7 @@
   gap: 4px;
 }
 .pert-formula-note code {
-  background: #fff;
+  background: var(--soft);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 5px;
@@ -577,7 +578,7 @@
   padding: 9px 8px;
 }
 .cpm-row-critical {
-  background: #fff9f9;
+  background: rgba(239, 133, 137, 0.12);
 }
 .cpm-row-critical td:first-child {
   border-left: 3px solid var(--cpm-critical);
@@ -618,7 +619,7 @@
 .pert-preview-box {
   display: flex;
   justify-content: space-between;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 12px;
@@ -643,7 +644,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px;
-  background: #fff;
+  background: var(--surface);
   margin-top: 5px;
 }
 .dep-choice-item {
@@ -692,7 +693,7 @@
 .project-cpm-card {
   margin-bottom: 18px;
   border-left: 4px solid var(--cpm-critical);
-  background: linear-gradient(to right, #fff7f7, #ffffff);
+  background: linear-gradient(110deg, #30262a 0%, var(--surface) 72%);
 }
 .project-cpm-header {
   display: flex;
@@ -709,7 +710,7 @@
   margin: 12px 0;
 }
 .project-cpm-stat {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 14px;
@@ -773,17 +774,17 @@
 .cpm-project-context {
   margin: 0 0 18px;
   padding: 15px 18px;
-  background: var(--surface, #ffffff);
-  border: 1px solid var(--border, #dce3e8);
-  border-left: 4px solid var(--primary, #4776a8);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
   border-radius: 8px;
-  color: var(--text, #26364a);
+  color: var(--text);
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
 .cpm-context-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:5px; }
 .cpm-context-heading strong { font-size: .98rem; overflow-wrap:anywhere; }
-.cpm-context-heading span { font-size:.8rem; color:var(--muted); background:var(--bg, #f4f6f8); padding:4px 9px; border-radius:5px; white-space:nowrap; }
+.cpm-context-heading span { font-size:.8rem; color:var(--muted); background:var(--bg); padding:4px 9px; border-radius:5px; white-space:nowrap; }
 .cpm-project-context p { margin:0; max-width:100ch; font-size:.9rem; line-height:1.6; }
 .cpm-project-context p + p { margin-top:7px; }
 .cpm-project-context .cpm-context-tip { margin-top:8px; font-weight:600; }
@@ -844,8 +845,8 @@
 }
 
 
-/* Refinements: balanced accent colours, clear connectors, and readable dark mode */
-:root {
+/* Refinements: balanced accent colours, clear connectors, and readable dark/light mode */
+html[data-theme="light"] {
   --cpm-critical: #d85b62;
   --cpm-critical-gradient: linear-gradient(135deg, #d85b62, #df7770);
   --cpm-critical-soft: #fff0ed;
@@ -853,13 +854,59 @@
   --cpm-slack: #4d7c91;
   --cpm-slack-soft: #e8f2f5;
   --cpm-border: #dce5e9;
+  --cpm-node-bg: #ffffff;
 }
-.cpm-chain-card {
+html[data-theme="light"] .cpm-chain-card {
   background: linear-gradient(110deg, #fff4f0 0%, #ffffff 72%);
 }
-.cpm-chain-step {
+html[data-theme="light"] .cpm-chain-step {
   border-color: #e7a09a;
   box-shadow: 0 2px 6px rgba(96, 112, 128, .08);
+  background: #ffffff;
+  color: #26364a;
+}
+html[data-theme="light"] .anatomy-mini-node {
+  background: #fff;
+  border-color: #dce5e9;
+}
+html[data-theme="light"] .aon-node {
+  background: #ffffff;
+  color: #26364a;
+  border-color: #dce5e9;
+}
+html[data-theme="light"] .node-dur {
+  background: #fff;
+  color: inherit;
+  border-color: #dce5e9;
+}
+html[data-theme="light"] .pert-prob-display {
+  background: #ffffff;
+  border-color: #dce5e9;
+}
+html[data-theme="light"] .prob-circle-wrap {
+  background: linear-gradient(135deg, var(--soft), #ffffff);
+}
+html[data-theme="light"] .pert-formula-note code {
+  background: #fff;
+  border-color: #dce5e9;
+}
+html[data-theme="light"] .cpm-row-critical {
+  background: #fff9f9;
+}
+html[data-theme="light"] .pert-preview-box {
+  background: #fff;
+  border-color: #dce5e9;
+}
+html[data-theme="light"] .deps-choice-list {
+  background: #fff;
+  border-color: #dce5e9;
+}
+html[data-theme="light"] .project-cpm-card {
+  background: linear-gradient(to right, #fff7f7, #ffffff);
+}
+html[data-theme="light"] .project-cpm-stat {
+  background: #ffffff;
+  border-color: #dce5e9;
 }
 .cpm-chain-arrow {
   color: #4d7c91;

@@ -137,9 +137,9 @@
   margin-top: 14px;
   padding: 10px 14px;
   border-radius: 8px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
   font-size: 0.84rem;
   display: flex;
   align-items: center;
@@ -150,6 +150,11 @@ html[data-theme="dark"] .path-shift-alert {
   background: rgba(239, 68, 68, 0.2);
   border-color: rgba(239, 68, 68, 0.4);
   color: #fca5a5;
+}
+html[data-theme="light"] .path-shift-alert {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
 }
 
 /* 2-Column Split: Interactive Sliders & Comparison */

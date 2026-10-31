@@ -123,9 +123,88 @@ In this sprint, the application achieved complete **Final Demo Readiness** acros
 TOTAL: 33/33 PASSED | 0 FAILED
 ```
 
+## 5. Dark Mode Regression Investigation & Definitive Architectural Resolution
+
+### A. Root Cause Analysis
+A systematic code audit of all stylesheets loaded in `index.html` revealed three architectural root causes responsible for recurring dark mode regressions:
+1. **Component CSS Files Defining Light `:root` Overriding `style.css`**:
+   Later-loaded component stylesheets (`cpm-pert.css`, `risk-analysis.css`, `delay-prediction.css`) declared `:root` blocks with light-theme color definitions (e.g., `--cpm-node-bg: #ffffff`, `--cpm-border: #e1e8f5`, `--risk-crit-bg: #fee2e2`, `--dp-card-bg: #ffffff`). Because `:root` rules in later files take cascade precedence over `style.css`, they overrode semantic design tokens with light values.
+2. **Hardcoded `#fff` and Pastel Hex Values in Base Component Rules**:
+   Components in `gantt.css`, `cpm-pert.css`, `dashboard.css`, `risk-analysis.css`, `delay-prediction.css`, `whatif-simulator.css`, and `style.css` specified base declarations with `#fff` or pastel tints (e.g., `.toggle button { background: #fff }`, `.g-left { background: #fff }`, `.chip { background: #fff }`, `.aon-node { background: #ffffff }`, `.pert-prob-display { background: #ffffff }`, `.path-shift-alert { background: #fef2f2 }`, `.status-badge-* { background: #d1fae5 }`, `.p-High { background: #fde8e9 }`).
+3. **Theme Scoping Inversion**:
+   Base rules across the codebase were authored assuming a light theme by default, with dark theme overrides placed inside `html[data-theme="dark"]`. Any selector mismatch, dynamic render, or un-scoped element immediately reverted to light-mode styling.
+
+### B. Architectural Fix Applied
+The CSS token and component architecture was inverted to be **Dark-by-Default with Strict Scoped Light Overrides**:
+- **Semantic Token Defaults:** All base `:root` rules and base component selectors across `style.css`, `gantt.css`, `cpm-pert.css`, `risk-analysis.css`, `delay-prediction.css`, `whatif-simulator.css`, and `dashboard.css` now use dark design tokens (`var(--surface)`, `var(--bg)`, `var(--border)`, `var(--text)`, `var(--soft)`) and dark translucent RGBA values by default.
+- **Strict Light Mode Scoping:** Every single `#fff`, `#ffffff`, and light pastel background rule across all 7 stylesheets is now strictly encapsulated under `html[data-theme="light"]`.
+- **Early Theme Initialization:** Synchronous inline `<script>` in `index.html` `<head>` sets `document.documentElement.dataset.theme = localStorage.getItem("pp_theme") || "dark";` before styles or DOM elements render, eliminating theme flashing.
+
+### C. Automated Regression Test Suite Results (`scratch/test_dark_mode_regression.js`)
+Headless Chrome CDP test suite covering all 11 pages, modal dialogs, fresh sessions, and state persistence:
+```
+====================================================
+   PROGNIX COMPREHENSIVE DARK MODE REGRESSION TEST  
+====================================================
+--- 1. Fresh Browser Session (Empty localStorage) ---
+  [PASS] Fresh session defaults to dark theme
+  [PASS] Fresh session body background is #171e26 (rgb(23, 30, 38))
+  [PASS] Login container has dark background #151b22
+  [PASS] Login card has dark surface #202a35
+  [PASS] Login input has dark background #202a35
+
+--- 2. Authentication & Login ---
+  [PASS] Login successful and workspace loaded
+
+--- 3. Scanning All 11 Pages in Dark Mode (No White Components) ---
+  [PASS] Page "dashboard": 0 white or light pastel components
+  [PASS] Page "projects": 0 white or light pastel components
+  [PASS] Page "gantt": 0 white or light pastel components
+  [PASS] Page "cpm": 0 white or light pastel components
+  [PASS] Page "risks": 0 white or light pastel components
+  [PASS] Page "delays": 0 white or light pastel components
+  [PASS] Page "whatif": 0 white or light pastel components
+  [PASS] Page "tasks": 0 white or light pastel components
+  [PASS] Page "team": 0 white or light pastel components
+  [PASS] Page "ai": 0 white or light pastel components
+  [PASS] Page "settings": 0 white or light pastel components
+
+--- 4. Modal Dialogs in Dark Mode ---
+  [PASS] Task modal card background is #202a35 (rgb(32, 42, 53))
+  [PASS] Task modal input background is #202a35
+  [PASS] Task modal dependencies list background is #202a35
+  [PASS] Task modal PERT preview box background is #202a35
+
+--- 5. Page Refresh with Dark Mode Preserved ---
+  [PASS] Theme after reload is "dark"
+  [PASS] Body background after reload is #171e26
+
+--- 6. Switch to Light Mode via Settings Switch ---
+  [PASS] Settings toggle is checked in dark mode
+  [PASS] Theme dataset switched to "light"
+  [PASS] localStorage saved "light"
+  [PASS] Body background in light mode is #f4f6f8 (rgb(244, 246, 248))
+  [PASS] Settings card background in light mode is #ffffff (rgb(255, 255, 255))
+  [PASS] Light mode text is high-contrast dark text
+
+--- 7. Page Refresh with Light Mode Preserved ---
+  [PASS] Theme after reload is preserved as "light"
+  [PASS] Body background after reload is #f4f6f8
+
+--- 8. Round-Trip Switch Back to Dark Mode ---
+  [PASS] Round-trip theme dataset is "dark"
+  [PASS] Round-trip localStorage is "dark"
+  [PASS] Round-trip body background returned to #171e26
+  [PASS] Theme state text is "Dark mode is enabled."
+
+====================================================
+TOTAL TESTS: 35 | PASSED: 35 | FAILED: 0
+====================================================
+```
+
 ---
 
-## 5. Execution Instructions
+## 6. Execution Instructions
 
 To run the complete ProgNix platform:
 

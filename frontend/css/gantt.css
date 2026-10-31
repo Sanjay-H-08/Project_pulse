@@ -1,12 +1,12 @@
 .legend{display:flex;gap:14px;align-items:center;font-size:.82rem;color:var(--muted);margin-bottom:12px;flex-wrap:wrap}
 .dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:-8px}
 .s-todo{background:#94a3b8}.s-prog{background:var(--primary)}.s-done{background:var(--success)}.today-dot{background:var(--danger)}
-.toggle button{border:1px solid var(--border);background:#fff;padding:7px 14px;cursor:pointer;font:inherit;font-size:.85rem}
+.toggle button{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:7px 14px;cursor:pointer;font:inherit;font-size:.85rem}
 .toggle button:first-child{border-radius:10px 0 0 10px}.toggle button:last-child{border-radius:0 10px 10px 0}
 .toggle button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .gantt-card{padding:0;overflow-x:auto}
 .g-wrap{display:flex;min-width:max-content}
-.g-left{width:230px;flex-shrink:0;position:sticky;left:0;background:#fff;z-index:5;border-right:1px solid var(--border)}
+.g-left{width:230px;flex-shrink:0;position:sticky;left:0;background:var(--surface);color:var(--text);z-index:5;border-right:1px solid var(--border)}
 .g-head{height:44px;border-bottom:1px solid var(--border)}
 .g-row{height:64px;min-height:64px;box-sizing:border-box;border-bottom:1px solid var(--border)}
 .g-head{display:flex;align-items:flex-end;padding:0 12px 6px;font-weight:600;font-size:.82rem;color:var(--muted)}
@@ -35,6 +35,21 @@ html[data-theme="dark"] .toggle button.active {
 }
 html[data-theme="dark"] .g-left {
   background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+html[data-theme="light"] .toggle button {
+  background: #fff;
+  color: var(--text);
+  border-color: var(--border);
+}
+html[data-theme="light"] .toggle button.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+html[data-theme="light"] .g-left {
+  background: #fff;
   color: var(--text);
   border-color: var(--border);
 }
