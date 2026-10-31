@@ -193,6 +193,11 @@ function renderProjectDetails(project) {
               const ct = cpmTasksMap.get(t.id);
               const isCrit = ct ? ct.isCritical : false;
               const slack = ct ? ct.totalFloat : 0;
+              const tInfo = PP.analyzeTask ? PP.analyzeTask(t) : { isOverdue: false, isBlocked: false };
+              let stateBadges = [];
+              if (tInfo.isOverdue) stateBadges.push(`<span class="badge badge-overdue" style="font-size:0.66rem;padding:1px 5px">⚠️ Overdue (${tInfo.overdueDays}d)</span>`);
+              if (tInfo.isBlocked) stateBadges.push(`<span class="badge badge-blocked" style="font-size:0.66rem;padding:1px 5px" title="Blocked by ${PP.esc(tInfo.blockedBy.join(', '))}">🚫 Blocked</span>`);
+
               const cpmBadge = isCrit
                 ? '<span class="badge badge-critical" title="Critical Path: 0 float">⚡ Critical</span>'
                 : `<span class="badge badge-slack" title="Slack buffer">Slack ${slack}d</span>`;
@@ -206,6 +211,7 @@ function renderProjectDetails(project) {
                 <div class="project-task-status">
                   <span class="badge p-${PP.esc(t.priority || "Medium")}">${PP.esc(t.priority || "Medium")}</span>
                   <span class="badge task-status-${t.status === "Done" ? "done" : t.status === "In Progress" ? "progress" : "todo"}">${PP.esc(t.status || "To Do")}</span>
+                  ${stateBadges.join(" ")}
                   ${cpmBadge}
                   <button class="link-btn" data-edit-task="${t.id}">Edit</button>
                   <button class="link-btn del" data-delete-task="${t.id}">Delete</button>
@@ -244,6 +250,9 @@ function renderProjectDetails(project) {
         await PP.api.projects.update(project.id, { team_size: Math.max(1, selected.length) });
       }
       PP.save();
+      if (PP.logActivity) {
+        PP.logActivity("team", `Updated team assignment for '${project.name}' (${selected.length} members)`, { projectId: project.id });
+      }
       renderProjectDetails(project);
       PP.toast("Project team updated.");
     } catch (err) {

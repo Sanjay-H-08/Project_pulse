@@ -207,8 +207,8 @@
       });
       PP.toast("Preset applied: All tasks set to Worst-Case PERT Pessimistic durations.");
     } else if (presetName === "resource-out") {
-      const rahulTasks = tasks.filter(t => t.assignee === "Rahul" || t.assignee === tasks[0]?.assignee);
-      rahulTasks.forEach(t => {
+      const leadTasks = tasks.filter(t => t.assignee === "David Kalu" || t.assignee === "Chen Wei" || t.assignee === tasks[0]?.assignee);
+      leadTasks.forEach(t => {
         adjustments.set(t.id, { durationDelta: 5 });
       });
       PP.toast("Preset applied: Lead engineer unavailable (+5d delay on assigned tasks).");

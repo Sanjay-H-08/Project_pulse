@@ -814,10 +814,7 @@
     if (context) {
       const projectName = result.project ? result.project.name : "No project selected";
       const taskCount = result.tasks ? result.tasks.length : 0;
-      context.innerHTML = `<div class="cpm-context-heading"><strong>CPM &amp; PERT for: ${PP.esc(projectName)}</strong><span>${taskCount} ${taskCount === 1 ? "activity" : "activities"}</span></div>
-        <p>Only this project's tasks are included. Add the activities and connect each task to its predecessors. For PERT, enter optimistic, most-likely, and pessimistic estimates when available.</p>
-        <p class="cpm-context-tip">The critical path, schedule status, and on-time chance are recalculated for this project's own scenario.</p>
-        ${taskCount ? "" : '<p class="cpm-context-tip">Getting started: add tasks for this project, then connect each task to the work that must finish before it starts.</p>'}`;
+      context.innerHTML = `<div class="cpm-context-heading"><strong>Schedule Analysis: ${PP.esc(projectName)}</strong><span>${taskCount} ${taskCount === 1 ? "activity" : "activities"}</span></div>`;
     }
 
     renderStats(result);

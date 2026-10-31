@@ -1,5 +1,4 @@
-// gantt.js: custom Gantt chart made of plain HTML + CSS with Critical Path highlighting.
-// Each bar is positioned with: left = days from timeline start * pixels per day.
+// gantt.js: custom Gantt chart with interactive dependency links, blocked/overdue flags, and Critical Path highlighting.
 let dayWidth = 28;
 let showCriticalPath = false;
 const cls = { "To Do": "s-todo", "In Progress": "s-prog", "Done": "s-done" };
@@ -57,28 +56,75 @@ PP.renders.gantt = () => {
     const ct = cpmTasksMap.get(t.id);
     const isCrit = ct ? ct.isCritical : false;
     const slack = ct ? ct.totalFloat : 0;
-    const cpmTag = showCriticalPath
-      ? (isCrit
-          ? '<span class="badge badge-critical" style="font-size:0.68rem;padding:1px 6px;margin-left:4px">CRITICAL</span>'
-          : `<span class="badge badge-slack" style="font-size:0.68rem;padding:1px 6px;margin-left:4px">Slack ${slack}d</span>`)
-      : "";
+    const tInfo = PP.analyzeTask ? PP.analyzeTask(t) : { isOverdue: false, isBlocked: false };
 
-    return `<div class="g-row g-info">
-      <div><b>${PP.esc(t.name)}</b>${cpmTag}</div>
-      <small>${PP.esc(t.assignee)} · ${PP.diff(t.start, t.end) + 1} days${t.dep ? " · after " + PP.esc((PP.data.tasks.find(x => x.id === t.dep) || { name: "?" }).name) : ""}</small>
+    let statusTags = [];
+    if (tInfo.isOverdue) statusTags.push(`<span class="badge badge-overdue" style="font-size:0.65rem;padding:1px 5px">⚠️ Overdue (${tInfo.overdueDays}d)</span>`);
+    if (tInfo.isBlocked) statusTags.push(`<span class="badge badge-blocked" style="font-size:0.65rem;padding:1px 5px" title="Blocked by ${PP.esc(tInfo.blockedBy.join(', '))}">🚫 Blocked</span>`);
+
+    if (showCriticalPath) {
+      if (isCrit) statusTags.push('<span class="badge badge-critical" style="font-size:0.65rem;padding:1px 5px">CRITICAL</span>');
+      else statusTags.push(`<span class="badge badge-slack" style="font-size:0.65rem;padding:1px 5px">Slack ${slack}d</span>`);
+    }
+
+    return `<div class="g-row g-info" data-task-id="${t.id}" onclick="PP.openTask(${t.id})" style="cursor:pointer" title="Click to edit task">
+      <div><b>${PP.esc(t.name)}</b> ${statusTags.join(" ")}</div>
+      <small>${PP.esc(t.assignee || 'Unassigned')} · ${PP.diff(t.start, t.end) + 1} days${t.dep ? " · after " + PP.esc((PP.data.tasks.find(x => x.id === t.dep) || { name: "?" }).name) : ""}</small>
     </div>`;
   }).join("");
+
+  // Build SVG dependency links
+  const taskIndexMap = new Map(tasks.map((t, idx) => [Number(t.id), idx]));
+  const depPaths = [];
+  tasks.forEach((t, succIdx) => {
+    const deps = Array.isArray(t.deps) && t.deps.length ? t.deps : (t.dep ? [t.dep] : []);
+    deps.forEach(predId => {
+      const predIdx = taskIndexMap.get(Number(predId));
+      if (predIdx !== undefined) {
+        const pred = tasks[predIdx];
+        const x1 = PP.diff(first, pred.start) * dayWidth + (PP.diff(pred.start, pred.end) + 1) * dayWidth;
+        const y1 = predIdx * 64 + 32;
+        const x2 = PP.diff(first, t.start) * dayWidth;
+        const y2 = succIdx * 64 + 32;
+        const ctPred = cpmTasksMap.get(pred.id);
+        const ctSucc = cpmTasksMap.get(t.id);
+        const isCritPath = ctPred && ctPred.isCritical && ctSucc && ctSucc.isCritical;
+        
+        const pathClass = isCritPath ? "g-dep-path crit" : "g-dep-path";
+        const midX = x1 + Math.max(8, (x2 - x1) / 2);
+        const d = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
+        depPaths.push(`<path d="${d}" class="${pathClass}" marker-end="url(#${isCritPath ? 'g-arrow-crit' : 'g-arrow'})" data-pred="${pred.id}" data-succ="${t.id}" />`);
+      }
+    });
+  });
+
+  const svgOverlay = `
+    <svg class="g-dep-svg" style="position:absolute;top:44px;left:0;width:${total * dayWidth}px;height:${tasks.length * 64}px;pointer-events:none;z-index:2">
+      <defs>
+        <marker id="g-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--muted)" />
+        </marker>
+        <marker id="g-arrow-crit" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef9292" />
+        </marker>
+      </defs>
+      ${depPaths.join("")}
+    </svg>
+  `;
 
   const rows = tasks.map(t => {
     const ct = cpmTasksMap.get(t.id);
     const isCrit = ct ? ct.isCritical : false;
     const slack = ct ? ct.totalFloat : 0;
+    const tInfo = PP.analyzeTask ? PP.analyzeTask(t) : { isOverdue: false, isBlocked: false };
 
     const x = PP.diff(first, t.start) * dayWidth;
     const w = (PP.diff(t.start, t.end) + 1) * dayWidth;
 
     const barClass = (showCriticalPath && isCrit) ? "s-crit" : cls[t.status];
     const critTitle = isCrit ? "[CRITICAL PATH - 0 Float] " : (slack > 0 ? `[Slack: ${slack}d] ` : "");
+    const blockedTitle = tInfo.isBlocked ? `[BLOCKED: Waiting on ${tInfo.blockedBy.join(', ')}] ` : "";
+    const overdueTitle = tInfo.isOverdue ? `[OVERDUE: ${tInfo.overdueDays} days late] ` : "";
 
     // Ghost float bar for non-critical activities when critical path is toggled on
     let floatBar = "";
@@ -88,18 +134,31 @@ PP.renders.gantt = () => {
       floatBar = `<div class="g-float-bar" style="left:${floatX}px;width:${floatW}px" title="${PP.esc(t.name)}: Can slip up to ${slack} days without delaying project completion (Total Float)."></div>`;
     }
 
-    return `<div class="g-row">
+    let extraBarClass = "";
+    if (tInfo.isBlocked) extraBarClass += " s-blocked";
+    if (tInfo.isOverdue) extraBarClass += " s-overdue";
+
+    return `<div class="g-row" data-task-id="${t.id}">
       ${floatBar}
-      <div class="g-bar ${barClass}" style="left:${x}px;width:${w}px" title="${critTitle}${PP.esc(t.name)}: ${t.start} to ${t.end}, ${t.progress}% (${t.status})" onclick="PP.openTask(${t.id})">
+      <div class="g-bar ${barClass}${extraBarClass}" style="left:${x}px;width:${w}px" title="${critTitle}${blockedTitle}${overdueTitle}${PP.esc(t.name)}: ${t.start} to ${t.end}, ${t.progress}% (${t.status})" onclick="PP.openTask(${t.id})">
         <div class="g-fill" style="width:${t.progress}%"></div>
-        <span>${t.progress}%</span>
+        <span>${tInfo.isBlocked ? '🚫 ' : (tInfo.isOverdue ? '⚠️ ' : '')}${t.progress}%</span>
       </div>
     </div>`;
   }).join("");
 
   const todayX = PP.diff(first, PP.day(0)) * dayWidth + dayWidth / 2;
-  $("gantt").innerHTML = `<div class="g-wrap"><div class="g-left"><div class="g-head">Task</div>${left}</div>
-    <div class="g-right" style="width:${total * dayWidth}px"><div class="g-days">${days}</div>${rows}<div class="g-today" style="left:${todayX}px"></div></div></div>`;
+  $("gantt").innerHTML = `
+    <div class="g-wrap">
+      <div class="g-left"><div class="g-head">Task &amp; Status</div>${left}</div>
+      <div class="g-right" style="width:${total * dayWidth}px">
+        <div class="g-days">${days}</div>
+        ${svgOverlay}
+        ${rows}
+        <div class="g-today" style="left:${todayX}px" title="Today"></div>
+      </div>
+    </div>
+  `;
 };
 
 document.addEventListener("DOMContentLoaded", () => {

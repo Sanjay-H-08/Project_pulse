@@ -40,6 +40,9 @@ document.addEventListener("DOMContentLoaded", () => {
     PP.data.teamDetails = PP.data.teamDetails || {};
     PP.data.teamDetails[name] = { email, role };
     PP.save();
+    if (PP.logActivity) {
+      PP.logActivity("team", `Added team member '${name}' (${role || 'Engineer'})`);
+    }
     $("member-modal").classList.add("hidden");
     PP.renders.team();
     PP.toast("Team member added. You can now assign them to projects and tasks.");

@@ -16,84 +16,83 @@
     return { name: "Low", class: "low" };
   };
 
-  // Default demo risks if none exist
+  // Default industrial risks if none exist
   riskEngine.initDefaultRisks = function() {
     if (!Array.isArray(PP.data.risks) || PP.data.risks.length === 0) {
+      const projId = (PP.data.projects[0] || {}).id || 1;
+      const tSensors = (PP.data.tasks.find(t => t.name.includes("Sensor")) || {}).id || 4;
+      const tPlc = (PP.data.tasks.find(t => t.name.includes("PLC")) || {}).id || 3;
+      const tSafety = (PP.data.tasks.find(t => t.name.includes("Safety")) || {}).id || 7;
+      const tRobot = (PP.data.tasks.find(t => t.name.includes("Robot")) || {}).id || 6;
+
       PP.data.risks = [
         {
           id: 1,
-          project: 1,
-          taskId: 3,
-          title: "API Gateway Rate-Limiting & Auth Bottlenecks",
-          desc: "External API rate-limits and database concurrency locks during high-traffic authentication bursts.",
-          category: "Technical",
-          likelihood: 4,
+          project: projId,
+          projectId: projId,
+          taskId: tSensors,
+          title: "Sensor Supply Chain Component Bottleneck",
+          desc: "Global silicon and optoelectronic sensor lead-time delays impacting downstream robot cell integration.",
+          category: "External",
+          likelihood: 5,
           impact: 4,
-          owner: "Rahul",
-          mitigation: "Deploy Redis in-memory token cache and implement exponential backoff retry policies.",
-          contingency: "Switch non-essential calls to read-only replica cluster and enable request queueing.",
+          score: 20,
+          owner: "David Kalu",
+          mitigation: "Expedite emergency air freight for substitute industrial optical sensors from secondary distributor.",
+          contingency: "Temporarily bridge optical signals using software simulation harnesses for preliminary testing.",
+          status: "Open",
+          dateAdded: PP.day(-12)
+        },
+        {
+          id: 2,
+          project: projId,
+          projectId: projId,
+          taskId: tPlc,
+          title: "Fieldbus Communication & I/O Mapping Jitter",
+          desc: "High packet latency on PROFINET network causing intermittent cyclic communication faults.",
+          category: "Technical",
+          likelihood: 3,
+          impact: 4,
+          score: 12,
+          owner: "Priya Sharma",
+          mitigation: "Conduct isolated loopback packet analysis and implement shielded CAT6A industrial cables.",
+          contingency: "Isolate motion-control drives onto a dedicated sub-ring topology with QoS priority.",
           status: "Mitigating",
           dateAdded: PP.day(-8)
         },
         {
-          id: 2,
-          project: 1,
-          taskId: 5,
-          title: "Critical Path Integration Testing Flaws",
-          desc: "End-to-end event ticketing workflows have complex dependencies; unexpected defects could delay final launch.",
-          category: "Schedule",
-          likelihood: 3,
+          id: 3,
+          project: projId,
+          projectId: projId,
+          taskId: tSafety,
+          title: "Emergency E-Stop Hardware Interlock Certification Delay",
+          desc: "Third-party regulatory inspector schedule conflict delaying final safety certificate sign-off.",
+          category: "Technical",
+          likelihood: 2,
           impact: 5,
-          owner: "Aisha",
-          mitigation: "Introduce automated Cypress/Playwright regression testing suites early during development.",
-          contingency: "Crash schedule by allocating Dev and Meera to manual smoke testing sprints.",
+          score: 10,
+          owner: "David Kalu",
+          mitigation: "Pre-audit dual-channel safety relays with certified third-party TÜV inspector before formal sign-off.",
+          contingency: "Schedule provisional remote inspection with video telemetry to authorize pre-commissioning runs.",
           status: "Open",
           dateAdded: PP.day(-5)
         },
         {
-          id: 3,
-          project: 1,
-          taskId: 2,
-          title: "UI Design Revision Latency",
-          desc: "Design stakeholder reviews taking longer than planned, delaying frontend screen development.",
-          category: "Scope",
-          likelihood: 3,
-          impact: 3,
-          owner: "Meera",
-          mitigation: "Freeze core screen wireframes after sprint 2; defer optional animations to v1.1.",
-          contingency: "Use standard component libraries (Tailwind/Material) for secondary screens.",
-          status: "Monitored",
-          dateAdded: PP.day(-10)
-        },
-        {
           id: 4,
-          project: 1,
-          taskId: 0,
-          title: "Single Point of Failure on Backend Engineer",
-          desc: "Rahul is assigned to 3 major concurrent activities on the critical path.",
-          category: "Resource",
-          likelihood: 4,
-          impact: 4,
-          owner: "Rahul",
-          mitigation: "Pair programming sessions with Aisha to cross-train on database endpoints.",
-          contingency: "Reassign non-critical documentation and setup tasks to Dev.",
-          status: "Mitigating",
-          dateAdded: PP.day(-3)
-        },
-        {
-          id: 5,
-          project: 2,
-          taskId: 8,
-          title: "Domain DNS & SSL Propagation Delays",
-          desc: "Hosting migration DNS propagation takes up to 48 hours for department website launch.",
-          category: "External",
+          project: projId,
+          projectId: projId,
+          taskId: tRobot,
+          title: "Robot Tool-Center-Point Calibration Drift",
+          desc: "Vibrational harmonics from high-speed conveyor causing minor TCP offset during carton pick-and-place.",
+          category: "Operational",
           likelihood: 2,
           impact: 3,
-          owner: "Dev",
-          mitigation: "Pre-configure TTL to 300 seconds 3 days prior to production cutover.",
-          contingency: "Keep staging proxy URL active as immediate fallback.",
-          status: "Closed",
-          dateAdded: PP.day(-25)
+          score: 6,
+          owner: "Marcus Vance",
+          mitigation: "Implement daily laser-guided zero-point calibration and routine gripper torque monitoring.",
+          contingency: "Reinforce robot floor anchoring plate with epoxy chemical studs.",
+          status: "Monitored",
+          dateAdded: PP.day(-15)
         }
       ];
       PP.save();

@@ -210,6 +210,98 @@ PP.projectProgress = id => {
   return t.length ? Math.round(t.reduce((s, x) => s + x.progress, 0) / t.length) : 0;
 };
 
+// Activity Logging
+PP.getActivities = () => {
+  try {
+    const list = JSON.parse(localStorage.getItem("pp_activities"));
+    if (Array.isArray(list) && list.length) return list;
+  } catch (_) {}
+  const seedActivities = [
+    { id: 1, type: "risk", icon: "🛡️", message: "Registered Supply Chain Risk on Sensor Procurement", time: "10 mins ago" },
+    { id: 2, type: "blocked", icon: "🚫", message: "Task 'Robot Integration' marked Blocked by pending sensors", time: "25 mins ago" },
+    { id: 3, type: "delay", icon: "⚠️", message: "Sensor Procurement supplier lead-time delay (+15d flagged)", time: "1 hour ago" },
+    { id: 4, type: "progress", icon: "⚡", message: "PLC Programming reached 80% logic sign-off", time: "3 hours ago" },
+    { id: 5, type: "done", icon: "✅", message: "Electrical Panel Fabrication certified complete (100%)", time: "Yesterday" },
+    { id: 6, type: "done", icon: "✅", message: "Mechanical & Conveyor Design completed (100%)", time: "2 days ago" }
+  ];
+  try { localStorage.setItem("pp_activities", JSON.stringify(seedActivities)); } catch (_) {}
+  return seedActivities;
+};
+
+PP.logActivity = (type, message, details = {}) => {
+  const activities = PP.getActivities();
+  const iconMap = {
+    task: "📋",
+    progress: "⚡",
+    done: "✅",
+    delay: "⚠️",
+    blocked: "🚫",
+    risk: "🛡️",
+    team: "👥",
+    project: "📁"
+  };
+  const entry = {
+    id: Date.now(),
+    type,
+    icon: iconMap[type] || "📌",
+    message,
+    time: "Just now",
+    timestamp: new Date().toISOString(),
+    details
+  };
+  activities.unshift(entry);
+  if (activities.length > 25) activities.length = 25;
+  try {
+    localStorage.setItem("pp_activities", JSON.stringify(activities));
+  } catch (_) {}
+};
+
+PP.analyzeTask = t => {
+  const today = PP.day(0);
+  const isDone = t.status === "Done";
+  const isOverdue = !isDone && t.end && t.end < today;
+  const overdueDays = isOverdue ? Math.max(1, PP.diff(t.end, today)) : 0;
+
+  // Dependencies: predecessors
+  const deps = Array.isArray(t.deps) && t.deps.length ? t.deps : (t.dep ? [t.dep] : []);
+  const predTasks = PP.data.tasks.filter(p => deps.map(Number).includes(Number(p.id)));
+  const unfinishedPreds = predTasks.filter(p => p.status !== "Done");
+  const isBlocked = !isDone && unfinishedPreds.length > 0;
+  const blockedBy = unfinishedPreds.map(p => p.name);
+
+  // Critical path check
+  let isCritical = false;
+  let totalFloat = 0;
+  if (PP.cpm) {
+    const projId = Number(t.project || t.project_id);
+    const res = PP.cpm.calculate(projId);
+    if (res && res.tasks) {
+      const ct = res.tasks.find(x => Number(x.id) === Number(t.id));
+      if (ct) {
+        isCritical = ct.isCritical;
+        totalFloat = ct.totalFloat;
+      }
+    }
+  }
+
+  // Risk check
+  const taskRisks = (PP.data.risks || []).filter(r => Number(r.taskId) === Number(t.id));
+  const hasHighRisk = taskRisks.some(r => Number(r.score) >= 12);
+  const isAtRisk = isOverdue || (isCritical && isBlocked) || hasHighRisk;
+
+  return {
+    isDone,
+    isOverdue,
+    overdueDays,
+    isBlocked,
+    blockedBy,
+    hasHighRisk,
+    isCritical,
+    totalFloat,
+    isAtRisk
+  };
+};
+
 // ---- Navigation ----
 const PAGES = {
   dashboard: ["Dashboard", '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>'],

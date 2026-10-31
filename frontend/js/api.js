@@ -162,6 +162,14 @@
       update: (projectId, riskId, data) => http.put(`/projects/${projectId}/risks/${riskId}`, data),
       delete: (projectId, riskId) => http.delete(`/projects/${projectId}/risks/${riskId}`),
       summary: projectId => http.get(`/projects/${projectId}/risks/summary`)
+    },
+
+    // Schedules (/projects/{id}/schedule)
+    schedules: {
+      calculate: (projectId, usePert = false, data = null) =>
+        http.post(`/projects/${projectId}/schedule${usePert ? "?use_pert=true" : ""}`, data || {}),
+      get: (projectId, usePert = false) =>
+        http.get(`/projects/${projectId}/schedule${usePert ? "?use_pert=true" : ""}`)
     }
   };
 

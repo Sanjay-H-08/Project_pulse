@@ -54,8 +54,11 @@ PP.renders.tasks = () => {
     if (cpmFilter) {
       const pCpm = cpmMap.get(Number(t.project || t.project_id));
       const cTask = pCpm ? pCpm.tasks.find(x => x.id === t.id) : null;
+      const tInfo = PP.analyzeTask ? PP.analyzeTask(t) : {};
       if (cpmFilter === "critical") matchCpm = cTask && cTask.isCritical;
       else if (cpmFilter === "slack") matchCpm = cTask && !cTask.isCritical;
+      else if (cpmFilter === "overdue") matchCpm = tInfo.isOverdue;
+      else if (cpmFilter === "blocked") matchCpm = tInfo.isBlocked;
     }
 
     return matchSearch && matchProject && matchStatus && matchPriority && matchCpm;
@@ -79,17 +82,27 @@ PP.renders.tasks = () => {
     const cTask = pCpm ? pCpm.tasks.find(x => x.id === t.id) : null;
     const isCrit = cTask ? cTask.isCritical : false;
     const slack = cTask ? cTask.totalFloat : 0;
+    const tInfo = PP.analyzeTask ? PP.analyzeTask(t) : { isOverdue: false, isBlocked: false };
+
+    let stateBadges = [];
+    if (tInfo.isOverdue) {
+      stateBadges.push(`<span class="badge badge-overdue" style="font-size:0.66rem;padding:1px 5px;margin-left:4px">⚠️ Overdue (${tInfo.overdueDays}d)</span>`);
+    }
+    if (tInfo.isBlocked) {
+      stateBadges.push(`<span class="badge badge-blocked" style="font-size:0.66rem;padding:1px 5px;margin-left:4px" title="Blocked by ${PP.esc(tInfo.blockedBy.join(', '))}">🚫 Blocked</span>`);
+    }
+
     const pathBadge = isCrit
       ? '<span class="badge badge-critical" title="On Critical Path: zero float. Directly dictates completion date.">⚡ Critical</span>'
       : `<span class="badge badge-slack" title="Float / Slack buffer: can be delayed up to ${slack} days without affecting project end date.">Slack ${slack}d</span>`;
 
     return `<tr>
-      <td><b>${PP.esc(t.name)}</b><br><span class="muted small">${PP.esc(PP.projectName(t.project))}</span></td>
-      <td>${PP.esc(t.assignee)}</td>
+      <td><b>${PP.esc(t.name)}</b>${stateBadges.join("")}<br><span class="muted small">${PP.esc(PP.projectName(t.project))}</span></td>
+      <td>${PP.esc(t.assignee || 'Unassigned')}</td>
       <td><span class="badge p-${t.priority}">${t.priority}</span></td>
       <td><select onchange="setStatus(${t.id}, this.value)">${["To Do", "In Progress", "Done"].map(s => `<option ${s === t.status ? "selected" : ""}>${s}</option>`).join("")}</select></td>
       <td>${t.end}</td>
-      <td style="min-width:90px"><div class="bar"><i style="width:${t.progress}%"></i></div></td>
+      <td style="min-width:90px"><div class="bar"><i style="width:${t.progress}%"></i></div><small class="muted" style="font-size:0.72rem">${t.progress}%</small></td>
       <td>${pathBadge}</td>
       <td><button class="link-btn" onclick="PP.openTask(${t.id})">Edit</button><button class="link-btn del" onclick="removeTask(${t.id})">Delete</button></td>
     </tr>`;
@@ -112,6 +125,9 @@ window.setStatus = async (id, status) => {
       const updated = await PP.api.tasks.update(id, { status, progress });
       Object.assign(t, PP.adapters.taskFromBackend(updated));
     }
+    if (PP.logActivity) {
+      PP.logActivity(status === "Done" ? "done" : "progress", `Updated task "${t.name}" to ${status} (${progress}%)`, { taskId: id });
+    }
     PP.toast("Status updated.");
     PP.refresh();
   } catch (err) {
@@ -124,6 +140,8 @@ window.setStatus = async (id, status) => {
 
 window.removeTask = async id => {
   if (!confirm("Delete this task?")) return;
+  const t = PP.data.tasks.find(x => Number(x.id) === Number(id));
+  const taskName = t ? t.name : `Task #${id}`;
   try {
     if (PP.api && PP.api.tasks) {
       await PP.api.tasks.delete(id);
@@ -134,6 +152,9 @@ window.removeTask = async id => {
       if (Array.isArray(t.deps)) t.deps = t.deps.filter(d => Number(d) !== Number(id));
     });
     PP.save();
+    if (PP.logActivity) {
+      PP.logActivity("task", `Deleted task "${taskName}"`, { taskId: id });
+    }
     PP.toast("Task deleted.");
     if (PP.page === "projects" && PP.selectedProjectId) {
       const currentProj = PP.data.projects.find(p => Number(p.id) === Number(PP.selectedProjectId));
@@ -349,6 +370,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       PP.save();
+      if (PP.logActivity) {
+        PP.logActivity("task", editingId ? `Updated task "${name}"` : `Created task "${name}"`, { taskId: editingId || data.id });
+      }
       $("task-modal").classList.add("hidden");
       if (PP.page === "projects" && PP.selectedProjectId) {
         const currentProj = PP.data.projects.find(p => Number(p.id) === Number(PP.selectedProjectId));

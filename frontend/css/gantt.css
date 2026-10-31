@@ -38,3 +38,36 @@ html[data-theme="dark"] .g-left {
   color: var(--text);
   border-color: var(--border);
 }
+
+
+/* Dependency links & Blocked/Overdue bar states */
+.g-dep-path {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 3;
+  opacity: 0.65;
+  transition: opacity .2s, stroke-width .2s;
+}
+.g-dep-path.crit {
+  stroke: #ef9292;
+  stroke-width: 2px;
+  stroke-dasharray: none;
+  opacity: 1;
+}
+.g-bar.s-blocked {
+  background: repeating-linear-gradient(45deg, #493d2a, #493d2a 8px, #362e21 8px, #362e21 16px) !important;
+  border: 1px dashed #f0cd8d !important;
+}
+.g-bar.s-overdue {
+  border: 2px solid var(--danger) !important;
+  box-shadow: 0 0 8px rgba(239, 146, 146, 0.35);
+}
+html[data-theme="light"] .g-bar.s-blocked {
+  background: repeating-linear-gradient(45deg, #fff3da, #fff3da 8px, #f7e6c3 8px, #f7e6c3 16px) !important;
+  border: 1px dashed #b9770e !important;
+  color: #8b641c;
+}
+html[data-theme="light"] .g-bar.s-overdue {
+  border: 2px solid #c65a5a !important;
+}

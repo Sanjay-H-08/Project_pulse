@@ -69,3 +69,22 @@
 .project-member>div{display:flex;flex-direction:column}
 .project-team-note{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
 .project-requirements{white-space:pre-wrap;color:var(--muted);font-size:.9rem}
+
+
+/* Activity Feed */
+.activity-feed{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.activity-row{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--border)}
+.activity-icon{font-size:1.1rem;flex-shrink:0;line-height:1.2}
+.activity-content{flex:1;min-width:0}
+.activity-msg{font-size:.84rem;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.activity-time{font-size:.72rem;color:var(--muted);margin-top:2px}
+
+/* Deadlines & Radar enhancements */
+.deadline-item{transition:background .15s}
+.deadline-item:hover{background:var(--soft)}
+.badge-overdue{background:#4a2d33;color:#ffb8bd;border:1px solid #7a3a44}
+.badge-blocked{background:#493d2a;color:#f0cd8d;border:1px solid #6b5534}
+.badge-atrisk{background:#432b4a;color:#e3b8ff;border:1px solid #6c3f78}
+html[data-theme="light"] .badge-overdue{background:#fde8e9;color:#c65a5a;border-color:#f5c2c7}
+html[data-theme="light"] .badge-blocked{background:#fff3da;color:#b9770e;border-color:#fae1b3}
+html[data-theme="light"] .badge-atrisk{background:#f5e6fc;color:#8833aa;border-color:#e4c1f2}
