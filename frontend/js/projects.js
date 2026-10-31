@@ -5,8 +5,13 @@ PP.selectedProjectId = null;
 
 PP.startWizard = () => {
   PP.wizardOpen = true; PP.selectedProjectId = null; step = 1; plan = [];
-  PP._wizardMembers = PP.data.team.slice(0, Math.min(3, PP.data.team.length));
-  ["p-name", "p-desc", "p-deadline", "p-req"].forEach(id => $(id).value = "");
+  PP._wizardMembers = [];
+  ["p-name", "p-desc", "p-deadline", "p-req", "p-members"].forEach(id => {
+    if ($(id)) {
+      $(id).value = "";
+      $(id).removeAttribute("readonly");
+    }
+  });
   if ($("p-priority")) $("p-priority").value = "Medium";
   $("plan-preview").innerHTML = "";
   if (location.hash === "#projects") PP.showPage("projects"); else location.hash = "projects";
@@ -19,6 +24,12 @@ function showStep() {
   $("wiz-back").textContent = step === 1 ? "Cancel" : "Back";
   $("wiz-next").textContent = step === 3 ? "Create project" : "Next";
   $("wizard-error").textContent = "";
+  if (step === 2) {
+    if ($("p-members")) {
+      $("p-members").removeAttribute("readonly");
+    }
+    renderMemberChoices("p-team-choices", PP._wizardMembers || []);
+  }
 }
 
 function validateStep() {
@@ -26,8 +37,8 @@ function validateStep() {
   if (step === 2) {
     if (!$("p-deadline").value) return "Choose a deadline.";
     if ($("p-deadline").value <= PP.day(0)) return "The deadline must be in the future.";
-    const m = +$("p-members").value;
-    if (!(m >= 1 && m <= PP.data.team.length)) return "Team size must be between 1 and " + PP.data.team.length + ".";
+    const m = parseInt($("p-members").value, 10);
+    if (isNaN(m) || m < 1) return "Please enter the number of team members (at least 1).";
   }
   return "";
 }
@@ -54,16 +65,13 @@ function formatDate(value) {
   return Number.isNaN(d.getTime()) ? PP.esc(value) : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
-function renderMemberChoices(containerId, selectedNames) {
+function renderMemberChoices(containerId, selectedNames = []) {
   const container = $(containerId);
   if (!container) return;
+  const list = selectedNames || [];
   container.innerHTML = PP.data.team.map(name => `
-    <label class="member-choice"><input type="checkbox" value="${PP.esc(name)}" ${selectedNames.includes(name) ? "checked" : ""}>
+    <label class="member-choice"><input type="checkbox" value="${PP.esc(name)}" ${list.includes(name) ? "checked" : ""}>
       <span>${PP.esc(name)}</span></label>`).join("") || '<p class="muted small">Add team members in the Team section first.</p>';
-  if (containerId === "p-team-choices") {
-    $("p-members").value = selectedMemberNames(containerId).length;
-    container.onchange = () => { $("p-members").value = selectedMemberNames(containerId).length; };
-  }
 }
 function selectedMemberNames(containerId) {
   return [...$(containerId).querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
@@ -404,8 +412,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const desc = $("p-desc").value.trim();
     const deadline = $("p-deadline").value;
     const priority = ($("p-priority") && $("p-priority").value) || "Medium";
-    const members = (PP._wizardMembers && PP._wizardMembers.length) || 1;
-    const teamMembers = PP._wizardMembers ? PP._wizardMembers.slice() : [];
+    const manualMembers = parseInt($("p-members").value, 10);
+    const checkedMembers = selectedMemberNames("p-team-choices");
+    const members = (!isNaN(manualMembers) && manualMembers > 0) ? manualMembers : (checkedMembers.length || 1);
+    const teamMembers = checkedMembers.length ? checkedMembers : (PP._wizardMembers || []);
     const req = $("p-req").value.trim();
     const startDate = plan.length ? plan[0].start : PP.day(0);
 

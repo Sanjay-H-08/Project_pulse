@@ -73,8 +73,8 @@
             <label>Project priority<select id="p-priority"><option value="Critical">Critical</option><option value="Medium" selected>Medium</option><option value="Low">Low</option></select><span class="muted small">Choose the urgency for this project. You can change it when creating another project.</span></label>
             <label>Description<textarea id="p-desc" rows="3"></textarea></label></div>
           <div id="step-2" class="hidden"><label>Deadline<input id="p-deadline" type="date"></label>
-            <label>Number of team members<input id="p-members" type="number" min="1" max="50" value="3" readonly></label>
-            <label>Assign team members</label><div id="p-team-choices" class="member-choices"></div></div>
+            <label>Number of team members<input id="p-members" type="number" min="1" max="100" placeholder="Enter number of team members (e.g. 4)" autocomplete="off" required></label>
+            <label>Assign team members (optional)</label><div id="p-team-choices" class="member-choices"></div></div>
           <div id="step-3" class="hidden"><label>Project requirements<textarea id="p-req" rows="4" placeholder="e.g. Mobile friendly, login system, admin panel"></textarea></label>
             <button class="btn ghost" id="gen-plan" type="button">&#10024; Generate Project Plan with Gemini AI</button>
             <div id="plan-preview"></div></div>
@@ -662,11 +662,40 @@
         <div class="cards" id="team-cards"></div>
       </section>
 
+      <!-- ===== AI ASSISTANT WITH MULTI-PROJECT SOLUTIONS ===== -->
       <section class="page" id="page-ai-assistant">
+        <!-- Top Project Context Header -->
+        <div class="card ai-project-bar" style="margin-bottom:14px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="font-weight:700;font-size:0.95rem;color:var(--text);display:flex;align-items:center;gap:6px;">
+              <svg class="icon" viewBox="0 0 24 24" style="color:var(--primary);"><polygon points="12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9"/></svg>
+              <span>Target Project:</span>
+            </div>
+            <select id="ai-project-select" style="min-width:220px;margin:0;padding:7px 12px;font-size:0.9rem;border-radius:8px;border:1px solid var(--border);">
+              <option value="all">🌐 All Projects (Portfolio Mode)</option>
+            </select>
+            <span id="ai-project-badge" class="badge" style="background:var(--soft);color:var(--primary);font-weight:600;padding:4px 10px;">Connected to Database</span>
+          </div>
+
+          <!-- Quick Solution Category Tabs -->
+          <div class="ai-solution-tabs" style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="btn small-btn ghost ai-sec-btn" data-intent="cpm" title="Critical Path breakdown for this project">⚡ CPM Solution</button>
+            <button type="button" class="btn small-btn ghost ai-sec-btn" data-intent="pert" title="PERT 3-point probability for this project">📊 PERT Probability</button>
+            <button type="button" class="btn small-btn ghost ai-sec-btn" data-intent="delay" title="Delay forecast and SPI for this project">⏱️ Delay Recovery</button>
+            <button type="button" class="btn small-btn ghost ai-sec-btn" data-intent="risk" title="Risk assessment & mitigation for this project">🛡️ Risk Strategy</button>
+            <button type="button" class="btn small-btn ghost ai-sec-btn" data-intent="workload" title="Team workload rebalancing for this project">👥 Team Workload</button>
+            <button type="button" class="btn small-btn ai-sec-btn" data-intent="executive" title="360 executive diagnostic report for this project" style="background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;">📋 360° Solution</button>
+          </div>
+        </div>
+
+        <!-- Chat Container -->
         <div class="card chat">
           <div class="chat-log" id="chat-log"></div>
           <div class="chips" id="chips"></div>
-          <form class="chat-form" id="chat-form"><input id="chat-input" placeholder="Ask Gemini about your project..." autocomplete="off"><button class="btn">Send</button></form>
+          <form class="chat-form" id="chat-form">
+            <input id="chat-input" placeholder="Ask anything about the selected project or any project in general..." autocomplete="off">
+            <button class="btn" type="submit">Send</button>
+          </form>
         </div>
       </section>
 
@@ -811,18 +840,18 @@
 <div id="toasts"></div>
 
 <!-- app.js first: it creates the shared PP object the others use -->
-<script src="js/app.js" defer></script>
-<script src="js/api.js" defer></script>
-<script src="js/cpm-pert.js" defer></script>
-<script src="js/risk-analysis.js" defer></script>
-<script src="js/delay-prediction.js" defer></script>
-<script src="js/whatif-simulator.js" defer></script>
-<script src="js/dashboard.js" defer></script>
-<script src="js/projects.js" defer></script>
-<script src="js/tasks.js" defer></script>
-<script src="js/gantt.js" defer></script>
-<script src="js/team.js" defer></script>
-<script src="js/ai-assistant.js" defer></script>
-<script src="js/main.js" defer></script>
+<script src="js/app.js?v=2.1" defer></script>
+<script src="js/api.js?v=2.1" defer></script>
+<script src="js/cpm-pert.js?v=2.1" defer></script>
+<script src="js/risk-analysis.js?v=2.1" defer></script>
+<script src="js/delay-prediction.js?v=2.1" defer></script>
+<script src="js/whatif-simulator.js?v=2.1" defer></script>
+<script src="js/dashboard.js?v=2.1" defer></script>
+<script src="js/projects.js?v=2.1" defer></script>
+<script src="js/tasks.js?v=2.1" defer></script>
+<script src="js/gantt.js?v=2.1" defer></script>
+<script src="js/team.js?v=2.1" defer></script>
+<script src="js/ai-assistant.js?v=2.1" defer></script>
+<script src="js/main.js?v=2.1" defer></script>
 </body>
 </html>

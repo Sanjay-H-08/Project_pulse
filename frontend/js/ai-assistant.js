@@ -1,180 +1,343 @@
-// ai-assistant.js: chat UI with intelligent project answers including CPM & PERT.
-// To connect Gemini later: replace askAI() with a fetch() to YOUR backend
-// (for example POST http://localhost:3000/api/chat). The backend holds the API key.
-const prompts = [
-  "Identify Critical Path (CPM)",
-  "PERT duration & probability",
-  "Predict project delays & bottlenecks",
-  "Show project risk register & health",
-  "Run what-if delay scenario",
-  "Which tasks have slack / float?",
-  "Summarize my project status",
-  "Which tasks are overdue?",
-  "Who has the most work?"
+// ai-assistant.js: Intelligent Project & Operations Research AI Assistant.
+// Connects directly to database models (Projects, Tasks, CPM, PERT, Risks)
+// and delivers targeted solutions for EACH and EVERY project in the site.
+
+const DEFAULT_PROMPTS = [
+  "⚡ Identify Critical Path (CPM)",
+  "📊 PERT on-time probability",
+  "⏱️ Predict project delays & SPI",
+  "👥 Who has the heaviest workload?",
+  "🛡️ Show project risks & 5x5 matrix",
+  "📋 360° Complete Project Solution",
+  "⚡ How to crash a project schedule?",
+  "🛑 How to handle unexpected scope creep?",
+  "🔄 Total Float vs Free Float"
 ];
 
-function askAI(text) {
-  return new Promise(resolve => setTimeout(() => {
-    const t = text.toLowerCase(), tasks = PP.data.tasks, today = PP.day(0);
-    const open = tasks.filter(x => x.status !== "Done");
-    const activeProject = PP.data.projects.find(p => p.status === "Active") || PP.data.projects[0];
+function formatMarkdown(text) {
+  if (!text) return "";
+  let esc = PP.esc(text);
 
-    // CPM / Critical Path query
-    if (t.includes("critical") || t.includes("cpm") || t.includes("path")) {
-      if (!activeProject || !PP.cpm) return resolve("No active projects found to calculate the critical path.");
-      const cpmRes = PP.cpm.calculate(activeProject.id);
-      if (cpmRes.hasCycle) return resolve(`⚠ Project '${activeProject.name}' contains cyclic dependencies. Please resolve predecessor loops.`);
-      if (!cpmRes.criticalPath.length) return resolve(`Project '${activeProject.name}' has no critical path yet. Add task dependencies to evaluate.`);
+  // Math blocks
+  esc = esc.replace(/\$\$([^$]+)\$\$/g, '<div class="math-block"><code>$1</code></div>');
+  esc = esc.replace(/\$([^$]+)\$/g, '<code class="math-inline">$1</code>');
 
-      const critTasks = cpmRes.criticalPath.map(id => cpmRes.tasks.find(x => x.id === id)).filter(Boolean);
-      const chainStr = critTasks.map((ct, idx) => `${idx + 1}. ${ct.name} (${ct.assignee}) · ${ct.duration} days`).join("\n");
-      return resolve(
-        `⚡ Critical Path Analysis for "${activeProject.name}":\n\n` +
-        `The critical path length is ${cpmRes.projectDuration} days across ${critTasks.length} sequential activities:\n` +
-        chainStr +
-        `\n\n📌 Key Rule: These activities have ZERO total float (slack = 0). Any delay in any of them will directly delay the project delivery date (${cpmRes.projectedEndDate}).`
-      );
+  // Headings
+  esc = esc.replace(/^#### (.*?)$/gm, '<h5 style="margin:10px 0 4px;font-size:0.95rem;color:var(--text);font-weight:700;">$1</h5>');
+  esc = esc.replace(/^### (.*?)$/gm, '<h4 style="margin:12px 0 6px;font-size:1.05rem;color:var(--primary);font-weight:700;">$1</h4>');
+  esc = esc.replace(/^## (.*?)$/gm, '<h3 style="margin:14px 0 8px;font-size:1.15rem;color:var(--primary);font-weight:700;">$1</h3>');
+
+  // Bold & Italic
+  esc = esc.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  esc = esc.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  esc = esc.replace(/`([^`]+)`/g, '<code style="background:var(--soft);padding:2px 6px;border-radius:4px;font-size:0.88em;color:var(--primary);">$1</code>');
+
+  // Tables
+  if (esc.includes("|")) {
+    const lines = esc.split("\n");
+    let inTable = false;
+    let tableHtml = '<div style="overflow-x:auto;margin:10px 0;"><table class="ai-table" style="width:100%;border-collapse:collapse;font-size:0.85rem;">';
+    let newLines = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith("|") && line.endsWith("|")) {
+        if (!inTable) {
+          inTable = true;
+          tableHtml = '<div style="overflow-x:auto;margin:10px 0;"><table class="ai-table" style="width:100%;border-collapse:collapse;font-size:0.85rem;">';
+        }
+        if (line.includes("---")) continue;
+        const cells = line.split("|").slice(1, -1).map(c => c.trim());
+        const tag = tableHtml.includes("<th") ? "td" : "th";
+        tableHtml += `<tr>${cells.map(c => `<${tag} style="border:1px solid var(--border);padding:6px 10px;text-align:left;">${c}</${tag}>`).join("")}</tr>`;
+      } else {
+        if (inTable) {
+          tableHtml += '</table></div>';
+          newLines.push(tableHtml);
+          inTable = false;
+        }
+        newLines.push(lines[i]);
+      }
     }
-
-    // PERT / Probability query
-    if (t.includes("pert") || t.includes("probab") || t.includes("uncertain") || t.includes("confidence")) {
-      if (!activeProject || !PP.cpm) return resolve("No active projects found for PERT evaluation.");
-      const cpmRes = PP.cpm.calculate(activeProject.id);
-      const { pert } = cpmRes;
-      const ci = pert.confidenceIntervals;
-      return resolve(
-        `📊 PERT 3-Point Statistical Assessment for "${activeProject.name}":\n\n` +
-        `• Expected Duration (Te): ${pert.expectedDuration} days (±${pert.sigma} days)\n` +
-        `• Critical Path Variance (σ²): ${pert.variance}\n` +
-        `• Target Project Limit: ${pert.targetDays} days (${pert.targetDate})\n` +
-        `• On-Time Completion Probability: ${pert.probability}% (Z = ${pert.zScore > 0 ? "+" : ""}${pert.zScore})\n\n` +
-        `Normal Distribution Confidence Ranges:\n` +
-        `• 68% Confidence: ${ci.p68[0]} – ${ci.p68[1]} days\n` +
-        `• 95% Confidence: ${ci.p95[0]} – ${ci.p95[1]} days\n` +
-        `• 99% Confidence: ${ci.p99[0]} – ${ci.p99[1]} days`
-      );
+    if (inTable) {
+      tableHtml += '</table></div>';
+      newLines.push(tableHtml);
     }
+    esc = newLines.join("\n");
+  }
 
-    // Slack / Float query
-    if (t.includes("slack") || t.includes("float") || t.includes("buffer")) {
-      if (!activeProject || !PP.cpm) return resolve("No active projects found.");
-      const cpmRes = PP.cpm.calculate(activeProject.id);
-      const nonCrit = cpmRes.tasks.filter(x => !x.isCritical && x.totalFloat > 0);
-      if (!nonCrit.length) return resolve(`In "${activeProject.name}", all activities are on the critical path or have zero float.`);
-      const listStr = nonCrit.map(x => `• ${x.name}: ${x.totalFloat} days of slack (Assigned to ${x.assignee})`).join("\n");
-      return resolve(
-        `🕒 Activities with Float / Slack in "${activeProject.name}":\n\n` +
-        listStr +
-        `\n\nThese activities can be safely delayed or paused by their slack duration without affecting the final project completion date.`
-      );
-    }
+  // Lists
+  esc = esc.replace(/^[•\-\*] (.*?)$/gm, '<li style="margin-left:18px;margin-bottom:4px;">$1</li>');
+  esc = esc.replace(/^(\d+)\. (.*?)$/gm, '<li style="margin-left:18px;margin-bottom:4px;" value="$1">$2</li>');
 
-    // Delay Prediction query
-    if (t.includes("delay") || t.includes("predict") || t.includes("bottleneck") || t.includes("spi")) {
-      if (!activeProject || !PP.delayEngine) return resolve("No active projects found for delay prediction.");
-      const dRes = PP.delayEngine.evaluateProject(activeProject.id);
-      if (!dRes) return resolve("Unable to run delay prediction.");
+  // Spacing
+  esc = esc.replace(/\n\n/g, '<div style="height:8px;"></div>');
+  esc = esc.replace(/\n/g, '<br>');
 
-      const slipStr = dRes.maxMilestoneSlip > 0 ? `+${dRes.maxMilestoneSlip} days slip` : "On Track (0 days slip)";
-      const bottleneckStr = dRes.primaryBottleneck
-        ? `• Primary Bottleneck: "${dRes.primaryBottleneck.name}" (Assigned to ${dRes.primaryBottleneck.assignee}, SPI: ${dRes.primaryBottleneck.spi})`
-        : "• No major critical-path bottleneck currently identified.";
-
-      const slippingTasks = dRes.tasks.filter(x => x.delayDays > 0);
-      const taskListStr = slippingTasks.length
-        ? slippingTasks.map(x => `  - ${x.name}: +${x.delayDays}d (${x.isCritical ? '⚡ Critical Path' : 'Float: ' + x.totalFloat + 'd'})`).join("\n")
-        : "  - All project tasks are currently on track.";
-
-      return resolve(
-        `⏱️ Delay Prediction & SPI Forecast for "${activeProject.name}":\n\n` +
-        `• Schedule Health: ${dRes.riskLabel}\n` +
-        `• Projected Milestone Slippage: ${slipStr}\n` +
-        `• Schedule Performance Index (SPI): ${dRes.projectSPI.toFixed(2)}\n` +
-        `• Projected Completion Date: ${dRes.projectedDeadline}\n` +
-        `• On-Time Confidence: ${dRes.onTimeProb}%\n\n` +
-        `${bottleneckStr}\n\n` +
-        `Tasks with Slipped Durations:\n${taskListStr}\n\n` +
-        `💡 Recommendation: Open the Delay Prediction page or What-If Simulator to evaluate crashing the critical bottleneck.`
-      );
-    }
-
-    // Risk Analysis query
-    if (t.includes("risk") || t.includes("hazard") || t.includes("matrix") || t.includes("threat")) {
-      const risks = (PP.data.risks || []).filter(r => !activeProject || Number(r.project) === activeProject.id);
-      const health = PP.riskEngine ? PP.riskEngine.calculateHealthIndex(activeProject ? activeProject.id : "all") : { score: 85, label: "Healthy" };
-      const open = risks.filter(r => r.status !== "Closed");
-      const crit = open.filter(r => (Number(r.likelihood) * Number(r.impact)) >= 16);
-
-      const topRisks = open.sort((a, b) => (b.likelihood * b.impact) - (a.likelihood * a.impact)).slice(0, 4);
-      const topStr = topRisks.length
-        ? topRisks.map((r, i) => `${i + 1}. ${r.title} (Score: ${r.likelihood * r.impact}/25, Owner: ${r.owner || "Unassigned"})\n   Mitigation: ${r.mitigation || "None"}`).join("\n")
-        : "No open risks recorded in the register.";
-
-      return resolve(
-        `🛡️ Risk Analysis & Health Index for "${activeProject ? activeProject.name : 'All Projects'}":\n\n` +
-        `• Project Health Score: ${health.score}/100 (${health.label})\n` +
-        `• Total Open Risks: ${open.length} (${crit.length} Critical Severity)\n\n` +
-        `Top Ranked Risks in Register:\n` +
-        topStr +
-        `\n\n💡 Tip: Check the 5x5 Heatmap Matrix in the Risk Analysis tab for systemic warnings and full mitigation plans.`
-      );
-    }
-
-    // What-If Simulator query
-    if (t.includes("what if") || t.includes("what-if") || t.includes("simulat") || t.includes("scenario") || t.includes("monte carlo")) {
-      if (!activeProject || !PP.whatIfEngine) return resolve("What-If simulator is available in the sidebar.");
-      const scenario = PP.whatIfEngine.evaluateScenario();
-
-      return resolve(
-        `🧪 What-If Scenario Simulator for "${activeProject.name}":\n\n` +
-        `• Baseline Critical Path Duration: ${scenario.baseDuration} days\n` +
-        `• Baseline Completion Date: ${scenario.baseDeadline}\n` +
-        `• Currently Simulated Duration: ${scenario.simDuration} days (Delta: ${scenario.durationDelta >= 0 ? '+' : ''}${scenario.durationDelta} days)\n` +
-        `• Critical Path Shift: ${scenario.newlyCritical.length ? 'Shifted! New bottleneck: ' + scenario.newlyCritical.join(', ') : 'Stable'}\n\n` +
-        `Monte Carlo Analysis Capability:\n` +
-        `• The simulator executes 1,000 to 5,000 probabilistic iterations sampling from task Beta/Triangular (O, M, P) distributions to compute P50, P75, P90 confidence horizons.\n\n` +
-        `👉 Navigate to "What-If Simulator" in the left sidebar to drag duration sliders, crash activities, or run Monte Carlo runs!`
-      );
-    }
-
-    if (t.includes("overdue") || t.includes("late")) {
-      const late = open.filter(x => x.end < today);
-      return resolve(late.length ? "Overdue tasks:\n" + late.map(x => "• " + x.name + " (" + x.assignee + ")").join("\n") : "Nothing is overdue. Great job!");
-    }
-    if (t.includes("status") || t.includes("summar")) {
-      const avg = tasks.length ? Math.round(tasks.reduce((a, x) => a + x.progress, 0) / tasks.length) : 0;
-      return resolve("You have " + PP.data.projects.length + " projects, " + open.length + " open tasks and overall progress is " + avg + "%.");
-    }
-    if (t.includes("work") || t.includes("workload") || t.includes("who")) {
-      const c = {}; open.forEach(x => c[x.assignee] = (c[x.assignee] || 0) + 1);
-      const top = Object.entries(c).sort((a, b) => b[1] - a[1])[0];
-      return resolve(top ? top[0] + " has the most open tasks (" + top[1] + "). Consider rebalancing." : "No open tasks right now.");
-    }
-    if (t.includes("plan") || t.includes("suggest")) return resolve("Suggested phases:\n1. Research and planning (15%)\n2. Design (20%)\n3. Development (35%)\n4. Testing (20%)\n5. Launch (10%)\nUse New Project > Generate Project Plan to create it.");
-    resolve("I can answer project questions, identify your Critical Path (CPM), calculate PERT 3-point durations and on-time probabilities, and check task slack/float buffers.");
-  }, 500));
+  return esc;
 }
 
-function addMsg(text, who) {
+function getSelectedProjectId() {
+  const sel = $("ai-project-select");
+  if (!sel || !sel.value || sel.value === "all") return null;
+  return Number(sel.value);
+}
+
+function updateProjectSelector() {
+  const sel = $("ai-project-select");
+  if (!sel) return;
+
+  const currentVal = sel.value;
+  const projects = PP.data && PP.data.projects ? PP.data.projects : [];
+
+  let opts = '<option value="all">🌐 All Projects (Portfolio Mode)</option>';
+  projects.forEach(p => {
+    const isAct = p.status === "Active" ? " ● Active" : "";
+    opts += `<option value="${p.id}">${PP.esc(p.name)}${isAct}</option>`;
+  });
+
+  sel.innerHTML = opts;
+
+  // Restore previous selection if still exists, or default to first project
+  if (projects.some(p => String(p.id) === String(currentVal))) {
+    sel.value = currentVal;
+  } else if (projects.length) {
+    sel.value = String(projects[0].id);
+  }
+
+  updateActiveProjectBadge();
+}
+
+function updateActiveProjectBadge() {
+  const sel = $("ai-project-select");
+  const badge = $("ai-project-badge");
+  const input = $("chat-input");
+  if (!sel || !badge) return;
+
+  if (sel.value === "all") {
+    badge.textContent = `Portfolio View (${(PP.data.projects || []).length} projects)`;
+    badge.style.background = "var(--soft)";
+    badge.style.color = "var(--primary)";
+    if (input) input.placeholder = "Ask about portfolio health, comparative critical paths, or any project...";
+  } else {
+    const proj = (PP.data.projects || []).find(p => String(p.id) === String(sel.value));
+    const pName = proj ? proj.name : `Project #${sel.value}`;
+    badge.textContent = `Target: ${pName}`;
+    badge.style.background = "#e0e7ff";
+    badge.style.color = "#3730a3";
+    if (input) input.placeholder = `Ask anything about ${pName} (CPM, delays, risks, team)...`;
+  }
+}
+
+// Local in-browser expert calculation for resilient offline backup
+function localProjectSolution(intent, projectId) {
+  const projects = PP.data.projects || [];
+  const proj = projectId ? projects.find(p => p.id === projectId) : (projects.find(p => p.status === "Active") || projects[0]);
+
+  if (!proj && intent !== "executive") return "No project found in database. Create a project first.";
+
+  const tasks = (PP.data.tasks || []).filter(t => !proj || Number(t.project || t.project_id) === proj.id);
+
+  if (intent === "cpm") {
+    if (!PP.cpm || !proj) return "Critical Path calculations require task dependencies.";
+    const cpmRes = PP.cpm.calculate(proj.id);
+    const critTasks = cpmRes.criticalPath.map(id => cpmRes.tasks.find(x => x.id === id)).filter(Boolean);
+    const chain = critTasks.map((t, i) => `${i + 1}. **${t.name}** (${t.assignee}) · ${t.duration}d · Float: 0d`).join("\n");
+    return (
+      `### ⚡ Critical Path Solution for '${proj.name}'\n\n` +
+      `• **Critical Duration:** **${cpmRes.projectDuration} working days**\n` +
+      `• **Zero-Float Bottleneck Count:** **${critTasks.length} sequential activities**\n\n` +
+      `**Critical Sequence:**\n${chain}\n\n` +
+      `💡 **Recommendation:** Any delay in these zero-float tasks will directly push project delivery date (${cpmRes.projectedEndDate}).`
+    );
+  }
+
+  if (intent === "pert") {
+    if (!PP.cpm || !proj) return "PERT analysis requires task duration estimates.";
+    const cpmRes = PP.cpm.calculate(proj.id);
+    const { pert } = cpmRes;
+    return (
+      `### 📊 PERT 3-Point Assessment for '${proj.name}'\n\n` +
+      `• **Expected Duration (Te):** **${pert.expectedDuration} days** (±${pert.sigma} days)\n` +
+      `• **Variance (σ²):** **${pert.variance} days²**\n` +
+      `• **On-Time Probability:** **${pert.probability}%** (Z = ${pert.zScore > 0 ? '+' : ''}${pert.zScore})\n\n` +
+      `**Confidence Horizons:**\n` +
+      `• 68% Confidence: ${pert.confidenceIntervals.p68[0]} – ${pert.confidenceIntervals.p68[1]} days\n` +
+      `• 95% Confidence: ${pert.confidenceIntervals.p95[0]} – ${pert.confidenceIntervals.p95[1]} days`
+    );
+  }
+
+  if (intent === "delay") {
+    const today = PP.day(0);
+    const overdue = tasks.filter(t => t.end < today && t.status !== "Done");
+    return overdue.length
+      ? `### ⏱️ Delay Recovery Plan for '${proj.name}'\n\n` +
+        `⚠️ **${overdue.length} Overdue Task(s):**\n` +
+        overdue.map(t => `• **${t.name}** (${t.assignee}) due on ${t.end}`).join("\n") +
+        `\n\n**Recovery Action:** Freeze non-critical floating tasks and assign peer support to critical tasks.`
+      : `### ⏱️ Schedule Health for '${proj.name}'\n\nAll ${tasks.length} tasks are currently on track with zero overdue days!`;
+  }
+
+  if (intent === "risk") {
+    const risks = (PP.data.risks || []).filter(r => !proj || Number(r.project) === proj.id);
+    return risks.length
+      ? `### 🛡️ Risk Assessment for '${proj.name}'\n\n` +
+        risks.map((r, i) => `${i + 1}. **${r.title}** (Score: ${r.likelihood * r.impact}/25, Owner: ${r.owner || 'Unassigned'})\n   Mitigation: ${r.mitigation || 'Monitor weekly'}`).join("\n")
+      : `### 🛡️ Risk Assessment for '${proj.name}'\n\nNo active risks recorded in the register for this project.`;
+  }
+
+  if (intent === "workload") {
+    const counts = {};
+    tasks.forEach(t => { counts[t.assignee] = (counts[t.assignee] || 0) + 1; });
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    return `### 👥 Team Workload Distribution for '${proj.name}'\n\n` +
+      entries.map(([name, count]) => `• **${name}**: ${count} task(s)`).join("\n");
+  }
+
+  // 360 solution
+  return `### 📋 360° Diagnostic Solution for '${proj.name}'\n\n` +
+    `• **Status:** ${proj.status} (Deadline: ${proj.deadline})\n` +
+    `• **Total Tasks:** ${tasks.length} tasks registered\n` +
+    `• **Immediate Action:** Keep critical tasks on schedule and conduct daily standup reviews.`;
+}
+
+async function askAI(text, forcedIntent = null) {
+  const pId = getSelectedProjectId();
+
+  // 1. Try Backend API first
+  if (PP.api && PP.api.ai && PP.api.ai.chat) {
+    try {
+      const res = await PP.api.ai.chat(text, pId);
+      if (res && res.reply) {
+        return {
+          reply: res.reply,
+          source: res.source || "expert_engine",
+          actions: res.suggested_actions || []
+        };
+      }
+    } catch (err) {
+      console.warn("Backend AI call failed, using local engine:", err);
+    }
+  }
+
+  // 2. Seamless local fallback
+  await new Promise(r => setTimeout(r, 350));
+  return {
+    reply: forcedIntent ? localProjectSolution(forcedIntent, pId) : localProjectSolution("360", pId),
+    source: "expert_engine",
+    actions: []
+  };
+}
+
+function addMsg(content, who, source = null) {
   const m = document.createElement("div");
-  m.className = "msg " + who; m.textContent = text;
-  $("chat-log").appendChild(m); $("chat-log").scrollTop = $("chat-log").scrollHeight;
+  m.className = "msg " + who;
+
+  if (who === "ai") {
+    let badgeHtml = "";
+    if (source === "gemini") {
+      badgeHtml = '<div style="margin-bottom:6px;"><span class="badge" style="background:#e8f0fe;color:#1a73e8;font-size:0.75rem;padding:3px 8px;border-radius:12px;font-weight:600;">✨ Google Gemini AI</span></div>';
+    } else if (source === "expert_engine") {
+      badgeHtml = '<div style="margin-bottom:6px;"><span class="badge" style="background:#ede9fe;color:#6d28d9;font-size:0.75rem;padding:3px 8px;border-radius:12px;font-weight:600;">🧠 ProjectPulse AI Database Engine</span></div>';
+    }
+    m.innerHTML = badgeHtml + '<div class="msg-content">' + formatMarkdown(content) + '</div>';
+  } else {
+    m.textContent = content;
+  }
+
+  $("chat-log").appendChild(m);
+  $("chat-log").scrollTop = $("chat-log").scrollHeight;
   return m;
 }
 
-async function send(text) {
-  text = text.trim(); if (!text) return;
-  addMsg(text, "me"); $("chat-input").value = "";
-  const typing = addMsg("Thinking...", "ai");
-  typing.textContent = await askAI(text);
+async function send(text, forcedIntent = null) {
+  text = text.trim();
+  if (!text) return;
+
+  const cleanText = text.replace(/^[^\w\s]+\s*/, "");
+  addMsg(cleanText, "me");
+
+  const input = $("chat-input");
+  if (input) input.value = "";
+
+  const typing = document.createElement("div");
+  typing.className = "msg ai";
+  typing.innerHTML = '<span class="muted small">Analyzing project database & computing algorithms...</span>';
+  $("chat-log").appendChild(typing);
+  $("chat-log").scrollTop = $("chat-log").scrollHeight;
+
+  const aiResult = await askAI(cleanText, forcedIntent);
+  typing.remove();
+
+  addMsg(aiResult.reply, "ai", aiResult.source);
 }
 
 PP.renders["ai-assistant"] = () => {
-  if (!$("chat-log").children.length) addMsg("Hi! I'm your ProjectPulse assistant. Ask me about your projects, tasks or workload.", "ai");
+  updateProjectSelector();
+
+  if (!$("chat-log").children.length) {
+    const sel = $("ai-project-select");
+    const pName = sel && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : "your projects";
+
+    addMsg(
+      "### 👋 Welcome to ProjectPulse AI Project Advisor!\n\n" +
+      "Connected directly to your SQLite database. You can:\n" +
+      "• **Select any project** from the top dropdown to get dedicated solutions.\n" +
+      "• Click any of the **Solution Buttons** (CPM, PERT, Delays, Risk, Workload, 360°) for instant analysis.\n" +
+      "• Ask questions about **any project in the database** or general operational management.\n\n" +
+      `Currently focused on: **${pName}**.`,
+      "ai",
+      "expert_engine"
+    );
+  }
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  $("chips").innerHTML = prompts.map(p => `<button type="button" class="chip">${p}</button>`).join("");
-  $("chips").onclick = e => e.target.classList.contains("chip") && send(e.target.textContent);
-  $("chat-form").onsubmit = e => { e.preventDefault(); send($("chat-input").value); };
+  // Setup project selector
+  const sel = $("ai-project-select");
+  if (sel) {
+    sel.onchange = () => {
+      updateActiveProjectBadge();
+      const pName = sel.options[sel.selectedIndex].text;
+      addMsg(`🎯 Switched active context to: **${pName}**. You can now request solutions or ask questions for this project.`, "ai", "expert_engine");
+    };
+  }
+
+  // Setup Solution Section buttons
+  document.querySelectorAll(".ai-sec-btn").forEach(btn => {
+    btn.onclick = () => {
+      const intent = btn.dataset.intent;
+      const sel = $("ai-project-select");
+      const pName = sel ? sel.options[sel.selectedIndex].text : "this project";
+
+      let promptText = "";
+      if (intent === "cpm") promptText = `Provide the Critical Path (CPM) breakdown and zero-float bottleneck solution for ${pName}.`;
+      else if (intent === "pert") promptText = `Provide the PERT 3-point expected duration and probability analysis for ${pName}.`;
+      else if (intent === "delay") promptText = `Provide delay prediction, SPI forecast, and recovery recommendations for ${pName}.`;
+      else if (intent === "risk") promptText = `Provide the 5x5 risk matrix and top mitigation strategies for ${pName}.`;
+      else if (intent === "workload") promptText = `Analyze team workload distribution and overload points for ${pName}.`;
+      else if (intent === "executive") promptText = `Generate a 360° complete project solution and executive diagnosis for ${pName}.`;
+
+      send(promptText, intent);
+    };
+  });
+
+  // Setup prompt chips
+  const chipsContainer = $("chips");
+  if (chipsContainer) {
+    chipsContainer.innerHTML = DEFAULT_PROMPTS.map(p => `<button type="button" class="chip" style="cursor:pointer;margin:4px 3px;transition:transform 0.1s;">${p}</button>`).join("");
+    chipsContainer.onclick = e => {
+      const btn = e.target.closest(".chip");
+      if (btn) send(btn.textContent);
+    };
+  }
+
+  // Setup form
+  const form = $("chat-form");
+  if (form) {
+    form.onsubmit = e => {
+      e.preventDefault();
+      send($("chat-input").value);
+    };
+  }
 });

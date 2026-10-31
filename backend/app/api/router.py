@@ -7,6 +7,7 @@ from backend.app.api.schedule import router as schedule_router
 from backend.app.api.progress import router as progress_router
 from backend.app.api.forecast import router as forecast_router
 from backend.app.api.risks import router as risks_router
+from backend.app.api.ai import router as ai_router
 
 api_router = APIRouter()
 
@@ -21,3 +22,4 @@ api_router.include_router(schedule_router)
 api_router.include_router(progress_router)
 api_router.include_router(forecast_router)
 api_router.include_router(risks_router)
+api_router.include_router(ai_router)

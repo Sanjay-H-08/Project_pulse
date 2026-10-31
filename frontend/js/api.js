@@ -137,6 +137,12 @@
       get: id => http.get(`/dependencies/${id}`),
       create: data => http.post("/dependencies", data),
       delete: id => http.delete(`/dependencies/${id}`)
+    },
+
+    // AI Assistant (/ai)
+    ai: {
+      chat: (message, projectId = null) => http.post("/ai/chat", { message, project_id: projectId }),
+      prompts: () => http.get("/ai/prompts")
     }
   };
 

@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
+
+    # AI Integration (Optional Google Gemini API Key)
+    GEMINI_API_KEY: Optional[str] = None
 
     # CORS Origins
     # Defaults include standard ports used by static frontend development servers
