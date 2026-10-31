@@ -29,10 +29,14 @@
 
   // Date helper to add days
   function addDays(dateStr, days) {
-    if (!dateStr) return "-";
-    const d = new Date(dateStr + "T00:00:00");
+    if (!dateStr || dateStr === "-") return "-";
+    const cleanStr = String(dateStr).includes("T") ? String(dateStr).split("T")[0] : String(dateStr);
+    const d = new Date(cleanStr + "T00:00:00");
     if (isNaN(d.getTime())) return "-";
-    d.setDate(d.getDate() + Math.round(days));
+    const delta = Number(days);
+    if (isNaN(delta) || !isFinite(delta)) return cleanStr;
+    d.setDate(d.getDate() + Math.round(delta));
+    if (isNaN(d.getTime())) return "-";
     return d.toISOString().slice(0, 10);
   }
 
@@ -74,8 +78,8 @@
   // Main CPM and PERT Calculation Engine
   cpm.calculate = function(projectId, mode = currentMode) {
     const pId = projectId ? Number(projectId) : null;
-    const allTasks = PP.data.tasks.filter(t => !pId || Number(t.project) === pId);
-    const projectObj = pId ? PP.data.projects.find(p => p.id === pId) : (PP.data.projects[0] || null);
+    const allTasks = PP.data.tasks.filter(t => !pId || Number(t.project || t.project_id) === pId);
+    const projectObj = pId ? PP.data.projects.find(p => Number(p.id) === pId) : (PP.data.projects[0] || null);
 
     if (!allTasks.length) {
       return {

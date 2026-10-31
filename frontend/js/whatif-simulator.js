@@ -8,10 +8,14 @@
   let adjustments = new Map();
 
   function addDays(dateStr, days) {
-    if (!dateStr) return "-";
-    const d = new Date(dateStr + "T00:00:00");
+    if (!dateStr || dateStr === "-") return "-";
+    const cleanStr = String(dateStr).includes("T") ? String(dateStr).split("T")[0] : String(dateStr);
+    const d = new Date(cleanStr + "T00:00:00");
     if (isNaN(d.getTime())) return "-";
-    d.setDate(d.getDate() + Math.round(days));
+    const delta = Number(days);
+    if (isNaN(delta) || !isFinite(delta)) return cleanStr;
+    d.setDate(d.getDate() + Math.round(delta));
+    if (isNaN(d.getTime())) return "-";
     return d.toISOString().slice(0, 10);
   }
 
@@ -35,8 +39,8 @@
   // Run CPM forward/backward passes on a simulated task set
   whatIf.calculateSimulatedCPM = function(projectId, taskOverrides = new Map()) {
     const pId = projectId ? Number(projectId) : (PP.data.projects[0] ? PP.data.projects[0].id : 1);
-    const project = PP.data.projects.find(p => p.id === pId);
-    const rawTasks = PP.data.tasks.filter(t => Number(t.project) === pId);
+    const project = PP.data.projects.find(p => Number(p.id) === pId);
+    const rawTasks = PP.data.tasks.filter(t => Number(t.project || t.project_id) === pId);
 
     if (!rawTasks.length) {
       return { projectDuration: 0, criticalTaskIds: new Set(), tasks: [] };

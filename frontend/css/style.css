@@ -117,3 +117,11 @@ html[data-theme="dark"] .cpm-chain-step,html[data-theme="dark"] .cpm-node{color:
 html[data-theme="dark"] .priority-critical{background:#4a2d33;color:#ffb8bd;border-color:#68404a}
 html[data-theme="dark"] .priority-medium{background:#493d2a;color:#f0cd8d;border-color:#625035}
 html[data-theme="dark"] .priority-low{background:#23443b;color:#a6e1ca;border-color:#315c4e}
+
+/* Backend connection status banner */
+.backend-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;margin-bottom:20px;background:#fff3da;color:#855d14;border:1px solid #f2dfba;border-radius:var(--radius);font-size:.9rem}
+.backend-banner.error{background:#fde8e9;color:#a52d38;border-color:#f5c2c7}
+.backend-banner.connected{background:#e3f6ee;color:#286b55;border-color:#b9e5d4}
+html[data-theme="dark"] .backend-banner{background:#493d2a;color:#f0cd8d;border-color:#625035}
+html[data-theme="dark"] .backend-banner.error{background:#4a2d33;color:#ffb8bd;border-color:#68404a}
+html[data-theme="dark"] .backend-banner.connected{background:#23443b;color:#a6e1ca;border-color:#315c4e}

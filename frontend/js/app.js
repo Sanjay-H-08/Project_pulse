@@ -138,24 +138,106 @@ PP.ensureTaskDefaults = t => {
   return t;
 };
 
-PP.load = () => {
-  try {
-    const d = JSON.parse(localStorage.getItem("pp_data")) || demoData();
-    if (d && d.tasks) d.tasks.forEach(PP.ensureTaskDefaults);
-    if (!d.risks || !Array.isArray(d.risks) || d.risks.length === 0) {
-      d.risks = demoData().risks;
-    }
-    return d;
-  } catch (e) {
-    return demoData();
+PP.isBackendConnected = false;
+
+PP.showBackendError = msg => {
+  const banner = $("backend-banner");
+  if (!banner) return;
+  banner.className = "backend-banner error";
+  const apiBase = (PP.api && PP.api.baseUrl) ? PP.api.baseUrl : "http://localhost:8000/api";
+  banner.innerHTML = `
+    <div>
+      <strong>⚠️ Backend Connection Error:</strong>
+      <span>${PP.esc(msg || "Could not connect to ProjectPulse API server at " + apiBase + ". Make sure uvicorn is running.")}</span>
+    </div>
+    <button class="btn small-btn ghost" id="btn-retry-backend" type="button">Retry Connection</button>
+  `;
+  const retryBtn = $("btn-retry-backend");
+  if (retryBtn) {
+    retryBtn.onclick = () => {
+      PP.toast("Reconnecting to backend...");
+      PP.syncWithBackend().then(() => {
+        PP.toast("Connected to backend!");
+      }).catch(err => {
+        PP.toast(err.message, "error");
+      });
+    };
   }
 };
+
+PP.hideBackendError = () => {
+  const banner = $("backend-banner");
+  if (banner) banner.className = "backend-banner hidden";
+};
+
+PP.load = () => {
+  let localData = {};
+  try {
+    localData = JSON.parse(localStorage.getItem("pp_data")) || {};
+  } catch (e) {
+    localData = {};
+  }
+
+  return {
+    team: localData.team || ["Aisha", "Rahul", "Meera", "Dev"],
+    teamDetails: localData.teamDetails || {},
+    projects: [], // Authoritative source is backend
+    tasks: [],    // Authoritative source is backend
+    dependencies: [],
+    risks: (Array.isArray(localData.risks) && localData.risks.length) ? localData.risks : demoData().risks
+  };
+};
+
 PP.data = PP.load();
-PP.save = () => localStorage.setItem("pp_data", JSON.stringify(PP.data));
+
+PP.syncWithBackend = async () => {
+  if (!PP.api) return false;
+  try {
+    // 1. Check health
+    await PP.api.health.check();
+
+    // 2. Fetch projects, tasks, dependencies
+    const [bpProjects, bpTasks, bpDeps] = await Promise.all([
+      PP.api.projects.list(),
+      PP.api.tasks.list(),
+      PP.api.dependencies.list()
+    ]);
+
+    PP.data.projects = (bpProjects || []).map(PP.adapters.projectFromBackend);
+    PP.data.tasks = (bpTasks || []).map(PP.adapters.taskFromBackend);
+    PP.data.dependencies = bpDeps || [];
+
+    // Sync task assignees into team list
+    const assignees = PP.data.tasks.map(t => t.assignee).filter(Boolean);
+    const teamSet = new Set([...PP.data.team, ...assignees]);
+    PP.data.team = Array.from(teamSet);
+
+    PP.isBackendConnected = true;
+    PP.hideBackendError();
+    PP.refresh();
+    return true;
+  } catch (err) {
+    PP.isBackendConnected = false;
+    PP.showBackendError(err.message);
+    PP.refresh();
+    throw err;
+  }
+};
+
+PP.save = () => {
+  // Persist auxiliary local state (risks, team preferences) without overriding server data
+  const toSave = {
+    team: PP.data.team,
+    teamDetails: PP.data.teamDetails,
+    risks: PP.data.risks
+  };
+  localStorage.setItem("pp_data", JSON.stringify(toSave));
+};
+
 PP.nextId = list => list.reduce((m, x) => Math.max(m, x.id), 0) + 1;
-PP.projectName = id => (PP.data.projects.find(p => p.id == id) || { name: "-" }).name;
+PP.projectName = id => (PP.data.projects.find(p => Number(p.id) === Number(id)) || { name: "-" }).name;
 PP.projectProgress = id => {
-  const t = PP.data.tasks.filter(x => x.project == id);
+  const t = PP.data.tasks.filter(x => Number(x.project || x.project_id) === Number(id));
   return t.length ? Math.round(t.reduce((s, x) => s + x.progress, 0) / t.length) : 0;
 };
 

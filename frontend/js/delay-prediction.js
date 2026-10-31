@@ -8,10 +8,14 @@
   let critOnlyFilter = false;
 
   function addDays(dateStr, days) {
-    if (!dateStr) return "-";
-    const d = new Date(dateStr + "T00:00:00");
+    if (!dateStr || dateStr === "-") return "-";
+    const cleanStr = String(dateStr).includes("T") ? String(dateStr).split("T")[0] : String(dateStr);
+    const d = new Date(cleanStr + "T00:00:00");
     if (isNaN(d.getTime())) return "-";
-    d.setDate(d.getDate() + Math.round(days));
+    const delta = Number(days);
+    if (isNaN(delta) || !isFinite(delta)) return cleanStr;
+    d.setDate(d.getDate() + Math.round(delta));
+    if (isNaN(d.getTime())) return "-";
     return d.toISOString().slice(0, 10);
   }
 
@@ -105,10 +109,10 @@
   // Run comprehensive prediction across the whole project
   delayEngine.evaluateProject = function(projectId) {
     const pId = projectId ? Number(projectId) : (PP.data.projects[0] ? PP.data.projects[0].id : null);
-    const project = PP.data.projects.find(p => p.id === pId) || PP.data.projects[0];
+    const project = PP.data.projects.find(p => Number(p.id) === Number(pId)) || PP.data.projects[0];
     if (!project) return null;
 
-    const allTasks = PP.data.tasks.filter(t => t.project === project.id);
+    const allTasks = PP.data.tasks.filter(t => Number(t.project || t.project_id) === Number(project.id));
     const cpmRes = PP.cpm ? PP.cpm.calculate(project.id) : null;
     const cpmTaskMap = new Map((cpmRes ? cpmRes.tasks : []).map(t => [t.id, t]));
 

@@ -104,7 +104,7 @@
   riskEngine.calculateHealthIndex = function(projectId) {
     const pId = projectId && projectId !== "all" ? Number(projectId) : null;
     const projectRisks = PP.data.risks.filter(r => !pId || Number(r.project) === pId);
-    const projectTasks = PP.data.tasks.filter(t => !pId || Number(t.project) === pId);
+    const projectTasks = PP.data.tasks.filter(t => !pId || Number(t.project || t.project_id) === pId);
 
     if (!projectTasks.length && !projectRisks.length) {
       return { score: 100, label: "Healthy", class: "safe" };
@@ -151,7 +151,7 @@
   // Systemic Early-Warning Schedule Scanner
   riskEngine.scanSystemicRisks = function(projectId) {
     const pId = projectId && projectId !== "all" ? Number(projectId) : null;
-    const tasks = PP.data.tasks.filter(t => !pId || Number(t.project) === pId);
+    const tasks = PP.data.tasks.filter(t => !pId || Number(t.project || t.project_id) === pId);
     const warnings = [];
     const today = PP.day(0);
 
@@ -572,7 +572,7 @@
     const pId = Number(document.getElementById("rm-project")?.value || 1);
     const tSel = document.getElementById("rm-task");
     if (!tSel) return;
-    const tasks = PP.data.tasks.filter(t => Number(t.project) === pId);
+    const tasks = PP.data.tasks.filter(t => Number(t.project || t.project_id) === pId);
     tSel.innerHTML = `<option value="0">Entire Project (No specific task)</option>` +
       tasks.map(t => `<option value="${t.id}">${PP.esc(t.name)}</option>`).join("");
     if (selectedTaskId) tSel.value = selectedTaskId;

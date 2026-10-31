@@ -14,7 +14,7 @@ PP.renders.gantt = () => {
     PP.ganttProjectId = selector.value === "all" ? null : Number(selector.value);
   }
   const chosen = selector && selector.value !== "all" ? Number(selector.value) : null;
-  const tasks = PP.data.tasks.filter(t => chosen === null || Number(t.project) === chosen)
+  const tasks = PP.data.tasks.filter(t => chosen === null || Number(t.project || t.project_id) === chosen)
     .slice().sort((a, b) => a.start.localeCompare(b.start));
 
   const critLegend = $("gantt-crit-legend");

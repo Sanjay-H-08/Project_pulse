@@ -70,7 +70,7 @@ function selectedMemberNames(containerId) {
 }
 
 function renderProjectDetails(project) {
-  const tasks = PP.data.tasks.filter(t => t.project == project.id).sort((a, b) => (a.start || "").localeCompare(b.start || ""));
+  const tasks = PP.data.tasks.filter(t => Number(t.project || t.project_id) === Number(project.id)).sort((a, b) => (a.start || "").localeCompare(b.start || ""));
   const progress = PP.projectProgress(project.id);
   const assigned = Array.isArray(project.teamMembers) ? project.teamMembers :
     [...new Set(tasks.map(t => t.assignee).filter(Boolean))];
@@ -221,10 +221,20 @@ function renderProjectDetails(project) {
     </div>`;
 
   renderMemberChoices("detail-team-choices", assigned);
-  $("save-project-members").onclick = () => {
-    project.teamMembers = selectedMemberNames("detail-team-choices");
-    project.members = project.teamMembers.length;
-    PP.save(); renderProjectDetails(project); PP.toast("Project team updated.");
+  $("save-project-members").onclick = async () => {
+    const selected = selectedMemberNames("detail-team-choices");
+    project.teamMembers = selected;
+    project.members = selected.length;
+    try {
+      if (PP.api && PP.api.projects) {
+        await PP.api.projects.update(project.id, { team_size: Math.max(1, selected.length) });
+      }
+      PP.save();
+      renderProjectDetails(project);
+      PP.toast("Project team updated.");
+    } catch (err) {
+      PP.toast("Failed to update project team: " + err.message, "error");
+    }
   };
   $("back-to-projects").onclick = () => { PP.selectedProjectId = null; renderProjects(); };
   $("detail-view-gantt").onclick = () => {
@@ -298,7 +308,31 @@ function renderProjects() {
   }).join("") || '<p class="empty">No projects yet. Click "New Project" to start.</p>';
 
   $("project-cards").querySelectorAll("[data-open-project]").forEach(card => {
-    const open = () => { PP.selectedProjectId = Number(card.dataset.openProject); renderProjects(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+    const open = async () => {
+      const pId = Number(card.dataset.openProject);
+      PP.selectedProjectId = pId;
+      renderProjects();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (PP.api && PP.api.projects) {
+        try {
+          const [serverProj, serverTasks] = await Promise.all([
+            PP.api.projects.get(pId),
+            PP.api.projects.getTasks(pId)
+          ]);
+          const pIdx = PP.data.projects.findIndex(p => Number(p.id) === pId);
+          if (pIdx !== -1) {
+            Object.assign(PP.data.projects[pIdx], PP.adapters.projectFromBackend(serverProj));
+          }
+          const adaptedTasks = (serverTasks || []).map(PP.adapters.taskFromBackend);
+          PP.data.tasks = PP.data.tasks.filter(t => Number(t.project || t.project_id) !== pId).concat(adaptedTasks);
+          if (PP.selectedProjectId === pId) {
+            renderProjects();
+          }
+        } catch (err) {
+          // Keep current state if network fails
+        }
+      }
+    };
     card.addEventListener("click", event => {
       if (event.target.closest("button")) return;
       open();
@@ -318,49 +352,153 @@ function renderProjects() {
 }
 PP.renders.projects = renderProjects;
 
-window.toggleProject = id => {
-  const p = PP.data.projects.find(x => x.id === id);
+window.toggleProject = async id => {
+  const p = PP.data.projects.find(x => Number(x.id) === Number(id));
   if (!p) return;
-  p.status = p.status === "Active" ? "Completed" : "Active";
-  PP.save(); renderProjects();
+  const newStatus = p.status === "Active" ? "Completed" : "Active";
+  try {
+    if (PP.api && PP.api.projects) {
+      const updated = await PP.api.projects.update(id, { status: newStatus });
+      Object.assign(p, PP.adapters.projectFromBackend(updated));
+    } else {
+      p.status = newStatus;
+    }
+    PP.toast(`Project marked as ${newStatus.toLowerCase()}.`);
+    renderProjects();
+    PP.refresh();
+  } catch (err) {
+    PP.toast("Failed to update project status: " + err.message, "error");
+  }
 };
-window.deleteProject = id => {
+
+window.deleteProject = async id => {
   if (!confirm("Delete this project and all its tasks?")) return;
-  PP.data.projects = PP.data.projects.filter(p => p.id !== id);
-  PP.data.tasks = PP.data.tasks.filter(t => t.project !== id);
-  PP.selectedProjectId = null;
-  PP.save(); renderProjects(); PP.toast("Project deleted.");
+  try {
+    if (PP.api && PP.api.projects) {
+      await PP.api.projects.delete(id);
+    }
+    PP.data.projects = PP.data.projects.filter(p => Number(p.id) !== Number(id));
+    PP.data.tasks = PP.data.tasks.filter(t => Number(t.project || t.project_id) !== Number(id));
+    PP.selectedProjectId = null;
+    PP.toast("Project deleted.");
+    renderProjects();
+    PP.refresh();
+  } catch (err) {
+    PP.toast("Failed to delete project: " + err.message, "error");
+  }
 };
 
 document.addEventListener("DOMContentLoaded", () => {
   $("gen-plan").onclick = () => $("p-deadline").value ? generatePlan() : ($("wizard-error").textContent = "Set a deadline in step 2 first.");
   $("wiz-back").onclick = () => { if (step === 1) { PP.wizardOpen = false; renderProjects(); } else { step--; showStep(); } };
-  $("wiz-next").onclick = () => {
+  $("wiz-next").onclick = async () => {
     const err = validateStep();
     if (err) return $("wizard-error").textContent = err;
-    if (step < 3) { if (step === 2) PP._wizardMembers = selectedMemberNames("p-team-choices"); step++; return showStep(); }
-    const id = PP.nextId(PP.data.projects);
-    PP.data.projects.push({ id, name: $("p-name").value.trim(), desc: $("p-desc").value.trim(), deadline: $("p-deadline").value, priority: $("p-priority").value || "Medium", members: PP._wizardMembers.length, teamMembers: PP._wizardMembers.slice(), status: "Active", req: $("p-req").value.trim() });
-    let tid = PP.nextId(PP.data.tasks);
-    plan.forEach((t, i) => {
-      const dur = Math.max(1, PP.diff(t.start, t.end) + 1);
-      PP.data.tasks.push({
-        id: tid + i,
-        project: id,
-        name: t.name,
-        start: t.start,
-        end: t.end,
-        progress: 0,
-        assignee: t.assignee,
-        status: "To Do",
-        priority: "Medium",
-        dep: i ? tid + i - 1 : 0,
-        deps: i ? [tid + i - 1] : [],
-        opt: Math.max(1, Math.round(dur * 0.75)),
-        likely: dur,
-        pess: Math.max(dur + 1, Math.round(dur * 1.5))
-      });
-    });
-    PP.save(); PP.wizardOpen = false; PP.selectedProjectId = id; PP.toast("Project created!"); renderProjects();
+    if (step < 3) {
+      if (step === 2) PP._wizardMembers = selectedMemberNames("p-team-choices");
+      step++;
+      return showStep();
+    }
+
+    const name = $("p-name").value.trim();
+    const desc = $("p-desc").value.trim();
+    const deadline = $("p-deadline").value;
+    const priority = ($("p-priority") && $("p-priority").value) || "Medium";
+    const members = (PP._wizardMembers && PP._wizardMembers.length) || 1;
+    const teamMembers = PP._wizardMembers ? PP._wizardMembers.slice() : [];
+    const req = $("p-req").value.trim();
+    const startDate = plan.length ? plan[0].start : PP.day(0);
+
+    const projectPayload = {
+      name: name,
+      description: desc || null,
+      status: "Active",
+      start_date: startDate,
+      deadline: deadline || null,
+      team_size: Math.max(1, members)
+    };
+
+    $("wiz-next").disabled = true;
+    $("wizard-error").textContent = "";
+
+    try {
+      let createdProject;
+      if (PP.api && PP.api.projects) {
+        const serverProject = await PP.api.projects.create(projectPayload);
+        createdProject = PP.adapters.projectFromBackend(serverProject);
+      } else {
+        const id = PP.nextId(PP.data.projects);
+        createdProject = { id, ...projectPayload, desc, startDate, members };
+      }
+
+      createdProject.priority = priority;
+      createdProject.teamMembers = teamMembers;
+      createdProject.req = req;
+      PP.data.projects.push(createdProject);
+
+      // If an AI plan was generated with tasks, create them in sequence
+      if (plan.length) {
+        let prevTaskId = null;
+        for (let i = 0; i < plan.length; i++) {
+          const pt = plan[i];
+          const dur = Math.max(1, PP.diff(pt.start, pt.end) + 1);
+          const taskPayload = {
+            project_id: createdProject.id,
+            name: pt.name,
+            duration: dur,
+            start_date: pt.start,
+            end_date: pt.end,
+            status: "To Do",
+            priority: "Medium",
+            progress: 0,
+            assignee: pt.assignee || null,
+            optimistic_duration: Math.max(1, Math.round(dur * 0.75)),
+            most_likely_duration: dur,
+            pessimistic_duration: Math.max(dur + 1, Math.round(dur * 1.5))
+          };
+          if (prevTaskId) {
+            taskPayload.depends_on_ids = [prevTaskId];
+          }
+
+          if (PP.api && PP.api.tasks) {
+            const serverTask = await PP.api.tasks.create(taskPayload);
+            prevTaskId = serverTask.id;
+            PP.data.tasks.push(PP.adapters.taskFromBackend(serverTask));
+          } else {
+            const tid = PP.nextId(PP.data.tasks);
+            prevTaskId = tid;
+            PP.data.tasks.push({
+              id: tid,
+              project: createdProject.id,
+              project_id: createdProject.id,
+              name: pt.name,
+              start: pt.start,
+              end: pt.end,
+              progress: 0,
+              assignee: pt.assignee,
+              status: "To Do",
+              priority: "Medium",
+              dep: i ? prevTaskId : 0,
+              deps: i ? [prevTaskId] : [],
+              opt: taskPayload.optimistic_duration,
+              likely: dur,
+              pess: taskPayload.pessimistic_duration
+            });
+          }
+        }
+      }
+
+      PP.save();
+      PP.wizardOpen = false;
+      PP.selectedProjectId = createdProject.id;
+      PP.toast("Project created successfully!");
+      renderProjects();
+      PP.refresh();
+    } catch (apiErr) {
+      $("wizard-error").textContent = apiErr.message;
+      PP.toast(apiErr.message, "error");
+    } finally {
+      $("wiz-next").disabled = false;
+    }
   };
 });

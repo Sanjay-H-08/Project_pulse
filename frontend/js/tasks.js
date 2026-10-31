@@ -72,23 +72,48 @@ PP.renders.tasks = () => {
   }).join("") || '<tr><td colspan="8" class="empty">No tasks match. Try clearing filters or add a task.</td></tr>';
 };
 
-window.setStatus = (id, status) => {
-  const t = PP.data.tasks.find(x => x.id === id);
+window.setStatus = async (id, status) => {
+  const t = PP.data.tasks.find(x => Number(x.id) === Number(id));
   if (!t) return;
+  const oldStatus = t.status;
+  const oldProgress = t.progress;
+  let progress = t.progress;
+  if (status === "Done") progress = 100;
+  if (status === "To Do") progress = 0;
   t.status = status;
-  if (status === "Done") t.progress = 100;
-  if (status === "To Do") t.progress = 0;
-  PP.save(); PP.refresh(); PP.toast("Status updated.");
+  t.progress = progress;
+
+  try {
+    if (PP.api && PP.api.tasks) {
+      const updated = await PP.api.tasks.update(id, { status, progress });
+      Object.assign(t, PP.adapters.taskFromBackend(updated));
+    }
+    PP.toast("Status updated.");
+    PP.refresh();
+  } catch (err) {
+    t.status = oldStatus;
+    t.progress = oldProgress;
+    PP.toast("Failed to update status: " + err.message, "error");
+    PP.refresh();
+  }
 };
 
-window.removeTask = id => {
+window.removeTask = async id => {
   if (!confirm("Delete this task?")) return;
-  PP.data.tasks = PP.data.tasks.filter(t => t.id !== id);
-  PP.data.tasks.forEach(t => {
-    if (t.dep === id) t.dep = 0;
-    if (Array.isArray(t.deps)) t.deps = t.deps.filter(d => d !== id);
-  });
-  PP.save(); PP.refresh(); PP.toast("Task deleted.");
+  try {
+    if (PP.api && PP.api.tasks) {
+      await PP.api.tasks.delete(id);
+    }
+    PP.data.tasks = PP.data.tasks.filter(t => Number(t.id) !== Number(id));
+    PP.data.tasks.forEach(t => {
+      if (Number(t.dep) === Number(id)) t.dep = 0;
+      if (Array.isArray(t.deps)) t.deps = t.deps.filter(d => Number(d) !== Number(id));
+    });
+    PP.toast("Task deleted.");
+    PP.refresh();
+  } catch (err) {
+    PP.toast("Failed to delete task: " + err.message, "error");
+  }
 };
 
 const opts = (arr, sel) => arr.map(([v, l]) => `<option value="${v}" ${v == sel ? "selected" : ""}>${PP.esc(l)}</option>`).join("");
@@ -96,13 +121,13 @@ const opts = (arr, sel) => arr.map(([v, l]) => `<option value="${v}" ${v == sel 
 function renderDepsCheckboxes(currentTaskId, selectedProjectId, currentDeps) {
   const container = $("f-deps-list");
   if (!container) return;
-  const projectTasks = PP.data.tasks.filter(x => x.id !== currentTaskId && Number(x.project) === Number(selectedProjectId));
+  const projectTasks = PP.data.tasks.filter(x => Number(x.id) !== Number(currentTaskId) && Number(x.project || x.project_id) === Number(selectedProjectId));
   if (!projectTasks.length) {
     container.innerHTML = '<span class="muted small">No other tasks in this project yet to depend on.</span>';
     return;
   }
   container.innerHTML = projectTasks.map(t => {
-    const isChecked = currentDeps.includes(t.id);
+    const isChecked = currentDeps.map(Number).includes(Number(t.id));
     return `
       <label class="dep-choice-item">
         <input type="checkbox" value="${t.id}" ${isChecked ? "checked" : ""}>
@@ -121,16 +146,16 @@ PP.openTask = (id, projectId) => {
   editingId = id || null;
   const defProj = projectId || (PP.data.projects[0] || {}).id;
   const t = id
-    ? PP.data.tasks.find(x => x.id === id)
+    ? PP.data.tasks.find(x => Number(x.id) === Number(id))
     : { project: defProj, assignee: PP.data.team[0], name: "", start: PP.day(0), end: PP.day(7), priority: "Medium", status: "To Do", progress: 0, dep: 0, deps: [] };
 
   PP.ensureTaskDefaults(t);
 
   $("modal-title").textContent = id ? "Edit task" : "Add task";
-  $("f-project").innerHTML = opts(PP.data.projects.map(p => [p.id, p.name]), t.project);
+  $("f-project").innerHTML = opts(PP.data.projects.map(p => [p.id, p.name]), t.project || t.project_id);
   $("f-assignee").innerHTML = opts(PP.data.team.map(m => [m, m]), t.assignee);
 
-  const availableTasks = PP.data.tasks.filter(x => x.id !== id && Number(x.project) === Number(t.project));
+  const availableTasks = PP.data.tasks.filter(x => Number(x.id) !== Number(id) && Number(x.project || x.project_id) === Number(t.project || t.project_id));
   $("f-dep").innerHTML = opts([[0, "None"]].concat(availableTasks.map(x => [x.id, x.name])), t.dep);
 
   $("f-name").value = t.name;
@@ -150,11 +175,11 @@ PP.openTask = (id, projectId) => {
 
   // Multi-predecessor checkboxes
   const currentDeps = Array.isArray(t.deps) && t.deps.length ? t.deps : (t.dep ? [t.dep] : []);
-  renderDepsCheckboxes(id, t.project, currentDeps);
+  renderDepsCheckboxes(id, t.project || t.project_id, currentDeps);
 
   $("f-project").onchange = () => {
     const selProj = Number($("f-project").value);
-    const avail = PP.data.tasks.filter(x => x.id !== id && Number(x.project) === selProj);
+    const avail = PP.data.tasks.filter(x => Number(x.id) !== Number(id) && Number(x.project || x.project_id) === selProj);
     $("f-dep").innerHTML = opts([[0, "None"]].concat(avail.map(x => [x.id, x.name])), 0);
     renderDepsCheckboxes(id, selProj, []);
   };
@@ -203,7 +228,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  $("task-form").onsubmit = e => {
+  $("task-form").onsubmit = async e => {
     e.preventDefault();
     const name = $("f-name").value.trim(), s = $("f-start").value, en = $("f-end").value, pg = +$("f-progress").value;
     if (!name) return $("f-error").textContent = "Task name is required.";
@@ -225,8 +250,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (singleDep && !deps.includes(singleDep)) deps.push(singleDep);
     if (!deps.length && singleDep) deps = [singleDep];
 
+    if (editingId) {
+      deps = deps.filter(id => Number(id) !== Number(editingId));
+    }
+
     const data = {
       project: +$("f-project").value,
+      project_id: +$("f-project").value,
       name,
       start: s,
       end: en,
@@ -241,12 +271,42 @@ document.addEventListener("DOMContentLoaded", () => {
       pess
     };
 
-    if (editingId) Object.assign(PP.data.tasks.find(t => t.id === editingId), data);
-    else PP.data.tasks.push(Object.assign({ id: PP.nextId(PP.data.tasks) }, data));
+    const submitBtn = $("task-form").querySelector('button:not([type="button"])');
+    if (submitBtn) submitBtn.disabled = true;
+    $("f-error").textContent = "";
 
-    PP.save();
-    $("task-modal").classList.add("hidden");
-    PP.refresh();
-    PP.toast(editingId ? "Task updated." : "Task added.");
+    try {
+      if (PP.api && PP.api.tasks) {
+        if (editingId) {
+          const updatePayload = PP.adapters.taskToBackend(data, true);
+          await PP.api.tasks.update(editingId, updatePayload);
+          if (PP.adapters.syncTaskDependencies) {
+            await PP.adapters.syncTaskDependencies(editingId, deps);
+          }
+          const fresh = await PP.api.tasks.get(editingId);
+          const adapted = PP.adapters.taskFromBackend(fresh);
+          const idx = PP.data.tasks.findIndex(t => Number(t.id) === Number(editingId));
+          if (idx !== -1) PP.data.tasks[idx] = adapted;
+        } else {
+          const createPayload = PP.adapters.taskToBackend(data, false);
+          const serverTask = await PP.api.tasks.create(createPayload);
+          const adapted = PP.adapters.taskFromBackend(serverTask);
+          PP.data.tasks.push(adapted);
+        }
+      } else {
+        if (editingId) Object.assign(PP.data.tasks.find(t => Number(t.id) === Number(editingId)), data);
+        else PP.data.tasks.push(Object.assign({ id: PP.nextId(PP.data.tasks) }, data));
+      }
+
+      PP.save();
+      $("task-modal").classList.add("hidden");
+      PP.refresh();
+      PP.toast(editingId ? "Task updated." : "Task added.");
+    } catch (apiErr) {
+      $("f-error").textContent = apiErr.message;
+      PP.toast(apiErr.message, "error");
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
   };
 });

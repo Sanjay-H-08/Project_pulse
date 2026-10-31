@@ -9,6 +9,13 @@ function showApp() {
   $("user-name").textContent = user.name;
   $("user-avatar").textContent = user.name.charAt(0).toUpperCase();
   PP.showPage(location.hash.replace("#", ""));
+  
+  // Synchronize authoritative state with backend on login / startup
+  if (PP.syncWithBackend) {
+    PP.syncWithBackend().catch(err => {
+      // Backend error is displayed via PP.showBackendError banner
+    });
+  }
 }
 
 function setAuthMode(signup) {
