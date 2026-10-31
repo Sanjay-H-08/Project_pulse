@@ -5,7 +5,7 @@ PP.selectedProjectId = null;
 
 PP.startWizard = () => {
   PP.wizardOpen = true; PP.selectedProjectId = null; step = 1; plan = [];
-  PP._wizardMembers = PP.data.team.slice(0, Math.min(3, PP.data.team.length));
+  PP._wizardMembers = PP.data.team.filter(m => m && m !== "Unassigned" && String(m).trim().length > 0).slice();
   ["p-name", "p-desc", "p-deadline", "p-req"].forEach(id => $(id).value = "");
   if ($("p-priority")) $("p-priority").value = "Medium";
   $("plan-preview").innerHTML = "";
@@ -19,6 +19,12 @@ function showStep() {
   $("wiz-back").textContent = step === 1 ? "Cancel" : "Back";
   $("wiz-next").textContent = step === 3 ? "Create project" : "Next";
   $("wizard-error").textContent = "";
+  if (step === 2) {
+    if (!PP._wizardMembers || PP._wizardMembers.length === 0) {
+      PP._wizardMembers = PP.data.team.filter(m => m && m !== "Unassigned" && String(m).trim().length > 0).slice();
+    }
+    renderMemberChoices("p-team-choices", PP._wizardMembers);
+  }
 }
 
 function validateStep() {
@@ -27,7 +33,7 @@ function validateStep() {
     if (!$("p-deadline").value) return "Choose a deadline.";
     if ($("p-deadline").value <= PP.day(0)) return "The deadline must be in the future.";
     const m = +$("p-members").value;
-    if (!(m >= 1 && m <= PP.data.team.length)) return "Team size must be between 1 and " + PP.data.team.length + ".";
+    if (!(m >= 1)) return "Select at least 1 team member.";
   }
   return "";
 }
@@ -57,12 +63,19 @@ function formatDate(value) {
 function renderMemberChoices(containerId, selectedNames) {
   const container = $(containerId);
   if (!container) return;
-  container.innerHTML = PP.data.team.map(name => `
-    <label class="member-choice"><input type="checkbox" value="${PP.esc(name)}" ${selectedNames.includes(name) ? "checked" : ""}>
+  const cleanTeam = PP.data.team.filter(name => name && name !== "Unassigned" && String(name).trim().length > 0);
+  const sel = Array.isArray(selectedNames) ? selectedNames : [];
+  container.innerHTML = cleanTeam.map(name => `
+    <label class="member-choice"><input type="checkbox" value="${PP.esc(name)}" ${sel.includes(name) ? "checked" : ""}>
       <span>${PP.esc(name)}</span></label>`).join("") || '<p class="muted small">Add team members in the Team section first.</p>';
   if (containerId === "p-team-choices") {
-    $("p-members").value = selectedMemberNames(containerId).length;
-    container.onchange = () => { $("p-members").value = selectedMemberNames(containerId).length; };
+    const updateCount = () => {
+      const chosen = selectedMemberNames(containerId);
+      PP._wizardMembers = chosen;
+      if ($("p-members")) $("p-members").value = chosen.length;
+    };
+    updateCount();
+    container.onchange = updateCount;
   }
 }
 function selectedMemberNames(containerId) {
@@ -195,6 +208,7 @@ function renderProjectDetails(project) {
                   <span class="badge task-status-${t.status === "Done" ? "done" : t.status === "In Progress" ? "progress" : "todo"}">${PP.esc(t.status || "To Do")}</span>
                   ${cpmBadge}
                   <button class="link-btn" data-edit-task="${t.id}">Edit</button>
+                  <button class="link-btn del" data-delete-task="${t.id}">Delete</button>
                 </div>
                 <div class="project-task-progress"><div class="bar"><i style="width:${Math.max(0, Math.min(100, Number(t.progress) || 0))}%"></i></div><span>${Math.max(0, Math.min(100, Number(t.progress) || 0))}%</span></div>
               </div>`;
@@ -273,7 +287,13 @@ function renderProjectDetails(project) {
   $("detail-delete-project").onclick = () => window.deleteProject(project.id);
   $("detail-add-task").onclick = () => PP.openTask(null, project.id);
   $("project-details").querySelectorAll("[data-edit-task]").forEach(button => {
-    button.onclick = () => PP.openTask(Number(button.dataset.editTask));
+    button.onclick = () => PP.openTask(Number(button.dataset.editTask), project.id);
+  });
+  $("project-details").querySelectorAll("[data-delete-task]").forEach(button => {
+    button.onclick = e => {
+      e.stopPropagation();
+      window.removeTask(Number(button.dataset.deleteTask));
+    };
   });
 }
 
@@ -286,10 +306,9 @@ function renderProjects() {
   wizard.classList.toggle("hidden", !PP.wizardOpen);
 
   if (PP.wizardOpen) return showStep();
-  if (PP.selectedProjectId !== null) {
-    const selected = PP.data.projects.find(p => p.id == PP.selectedProjectId);
+  if (PP.selectedProjectId !== null && PP.selectedProjectId !== undefined) {
+    const selected = PP.data.projects.find(p => Number(p.id) === Number(PP.selectedProjectId));
     if (selected) return renderProjectDetails(selected);
-    PP.selectedProjectId = null;
   }
 
   $("project-cards").innerHTML = PP.data.projects.map(p => {
@@ -351,6 +370,7 @@ function renderProjects() {
   });
 }
 PP.renders.projects = renderProjects;
+PP.renderProjectDetails = renderProjectDetails;
 
 window.toggleProject = async id => {
   const p = PP.data.projects.find(x => Number(x.id) === Number(id));

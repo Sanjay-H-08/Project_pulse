@@ -278,6 +278,11 @@ html[data-theme="dark"] .ai-spark-chip {
 .rec-rebalance { background: #e0e7ff; color: #4338ca; }
 .rec-buffer { background: #d1fae5; color: #047857; }
 
+html[data-theme="dark"] .rec-crashing { background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+html[data-theme="dark"] .rec-fasttrack { background: rgba(245, 158, 11, 0.25); color: #fde68a; }
+html[data-theme="dark"] .rec-rebalance { background: rgba(99, 102, 241, 0.25); color: #c7d2fe; }
+html[data-theme="dark"] .rec-buffer { background: rgba(16, 185, 129, 0.25); color: #86efac; }
+
 .ai-rec-title {
   font-size: 0.88rem;
   font-weight: 700;

@@ -72,7 +72,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.get("/", tags=["Root"])
 def root():
     return {
-        "message": "Welcome to ProjectPulse AI API",
+        "message": "Welcome to ProgNix API",
         "version": settings.VERSION,
         "docs": "/docs",
         "health": "/api/health"

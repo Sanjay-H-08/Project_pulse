@@ -22,3 +22,19 @@
 .g-today{position:absolute;top:0;bottom:0;width:2px;background:var(--danger);z-index:3}
 
 .gantt-toolbar{align-items:flex-start}
+
+html[data-theme="dark"] .toggle button {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+html[data-theme="dark"] .toggle button.active {
+  background: #426f98;
+  color: #fff;
+  border-color: #426f98;
+}
+html[data-theme="dark"] .g-left {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}

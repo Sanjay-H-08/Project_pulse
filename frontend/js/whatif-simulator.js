@@ -150,6 +150,7 @@
     const simulatedCPM = whatIf.calculateSimulatedCPM(pId, adjustments);
 
     const project = PP.data.projects.find(p => p.id === pId);
+    if (!project) return null;
     const baseDuration = baselineCPM.projectDuration;
     const simDuration = simulatedCPM.projectDuration;
     const durationDelta = simDuration - baseDuration;

@@ -170,7 +170,7 @@ async function send(text) {
 }
 
 PP.renders["ai-assistant"] = () => {
-  if (!$("chat-log").children.length) addMsg("Hi! I'm your ProjectPulse assistant. Ask me about your projects, tasks or workload.", "ai");
+  if (!$("chat-log").children.length) addMsg("Hi! I'm your ProgNix assistant. Ask me about your projects, tasks or workload.", "ai");
 };
 
 document.addEventListener("DOMContentLoaded", () => {

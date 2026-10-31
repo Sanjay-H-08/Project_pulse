@@ -1,13 +1,16 @@
 // team.js: add and display team members, assigned tasks and workload.
 PP.renders.team = () => {
+  const cleanTeam = (PP.data.team || []).filter(m => m && m !== "Unassigned" && String(m).trim().length > 0);
   const open = PP.data.tasks.filter(t => t.status !== "Done");
-  const maxLoad = Math.max(1, ...PP.data.team.map(m => open.filter(t => t.assignee === m).length));
-  $("team-cards").innerHTML = PP.data.team.map(m => {
-    const mine = PP.data.tasks.filter(t => t.assignee === m), done = mine.filter(t => t.status === "Done").length;
+  const maxLoad = Math.max(1, ...cleanTeam.map(m => open.filter(t => t.assignee === m).length));
+  $("team-cards").innerHTML = cleanTeam.map(m => {
+    const mine = PP.data.tasks.filter(t => t.assignee === m);
+    const done = mine.filter(t => t.status === "Done").length;
     const load = open.filter(t => t.assignee === m).length;
     const pct = mine.length ? Math.round(done / mine.length * 100) : 0;
     const info = (PP.data.teamDetails || {})[m] || {};
-    return `<div class="card member"><div class="row-between"><div class="avatar">${PP.esc(m[0].toUpperCase())}</div><span class="badge">${PP.data.projects.filter(p => (p.teamMembers || []).includes(m)).length} projects</span></div>
+    const projectCount = PP.data.projects.filter(p => (Array.isArray(p.teamMembers) && p.teamMembers.includes(m)) || PP.data.tasks.some(t => Number(t.project || t.project_id) === Number(p.id) && t.assignee === m)).length;
+    return `<div class="card member"><div class="row-between"><div class="avatar">${PP.esc(m[0].toUpperCase())}</div><span class="badge">${projectCount} project${projectCount === 1 ? "" : "s"}</span></div>
       <h3>${PP.esc(m)}</h3><span class="muted small">${PP.esc(info.role || "Team member")}</span>
       ${info.email ? `<p class="muted small">${PP.esc(info.email)}</p>` : ""}
       <span class="muted small">${mine.length} assigned · ${done} completed (${pct}%)</span>
@@ -29,6 +32,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const email = $("member-email").value.trim();
     const role = $("member-role").value.trim();
     if (!name) return $("member-error").textContent = "Enter the member's name.";
+    if (name.toLowerCase() === "unassigned")
+      return $("member-error").textContent = "Name cannot be 'Unassigned'.";
     if (PP.data.team.some(m => m.toLowerCase() === name.toLowerCase()))
       return $("member-error").textContent = "This team member already exists.";
     PP.data.team.push(name);

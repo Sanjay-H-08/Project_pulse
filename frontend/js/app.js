@@ -13,119 +13,14 @@ PP.toast = (msg, type) => {
   $("toasts").appendChild(t); setTimeout(() => t.remove(), 3000);
 };
 
-// ---- Demo data (used the first time, then saved in LocalStorage) ----
+// ---- Data store (authoritative source is the backend database) ----
 function demoData() {
-  const T = (id, project, name, s, e, progress, assignee, status, priority, dep, opt, likely, pess) => {
-    const dur = PP.diff(PP.day(s), PP.day(e)) + 1;
-    const l = likely || dur;
-    const o = opt || Math.max(1, Math.round(l * 0.75));
-    const p = pess || Math.max(l + 1, Math.round(l * 1.5));
-    const depsArr = Array.isArray(dep) ? dep : (dep ? [dep] : []);
-    return {
-      id, project, name,
-      start: PP.day(s),
-      end: PP.day(e),
-      progress, assignee, status, priority,
-      dep: depsArr[0] || 0,
-      deps: depsArr,
-      opt: o,
-      likely: l,
-      pess: p
-    };
-  };
   return {
-    team: ["Aisha", "Rahul", "Meera", "Dev"],
-    projects: [
-      { id: 1, name: "Campus Event App", desc: "Mobile app for the college fest", deadline: PP.day(40), members: 4, status: "Active" },
-      { id: 2, name: "Website Redesign", desc: "New department website", deadline: PP.day(-5), members: 2, status: "Completed" }
-    ],
-    tasks: [
-      T(1, 1, "Gather requirements", -12, -6, 100, "Aisha", "Done", "High", 0, 5, 7, 11),
-      T(2, 1, "Design UI mockups", -6, 4, 70, "Meera", "In Progress", "High", 1, 8, 11, 16),
-      T(3, 1, "Build login and API", 0, 14, 35, "Rahul", "In Progress", "High", 1, 10, 15, 22),
-      T(4, 1, "Event listing screens", 8, 22, 0, "Dev", "To Do", "Medium", 2, 12, 15, 20),
-      T(5, 1, "Testing and bug fixes", 22, 32, 0, "Aisha", "To Do", "Medium", [3, 4], 8, 11, 17),
-      T(6, 1, "Launch and demo", 32, 40, 0, "Rahul", "To Do", "Low", 5, 6, 9, 14),
-      T(7, 2, "Collect content", -30, -20, 100, "Meera", "Done", "Low", 0, 8, 11, 15),
-      T(8, 2, "Publish site", -20, -5, 100, "Dev", "Done", "Medium", 7, 12, 16, 22)
-    ],
-    risks: [
-      {
-        id: 1,
-        project: 1,
-        taskId: 3,
-        title: "API Gateway Rate-Limiting & Auth Bottlenecks",
-        desc: "External API rate-limits and database concurrency locks during high-traffic authentication bursts.",
-        category: "Technical",
-        likelihood: 4,
-        impact: 4,
-        owner: "Rahul",
-        mitigation: "Deploy Redis in-memory token cache and implement exponential backoff retry policies.",
-        contingency: "Switch non-essential calls to read-only replica cluster and enable request queueing.",
-        status: "Mitigating",
-        dateAdded: PP.day(-8)
-      },
-      {
-        id: 2,
-        project: 1,
-        taskId: 5,
-        title: "Critical Path Integration Testing Flaws",
-        desc: "End-to-end event ticketing workflows have complex dependencies; unexpected defects could delay final launch.",
-        category: "Schedule",
-        likelihood: 3,
-        impact: 5,
-        owner: "Aisha",
-        mitigation: "Introduce automated Cypress/Playwright regression testing suites early during development.",
-        contingency: "Crash schedule by allocating Dev and Meera to manual smoke testing sprints.",
-        status: "Open",
-        dateAdded: PP.day(-5)
-      },
-      {
-        id: 3,
-        project: 1,
-        taskId: 2,
-        title: "UI Design Revision Latency",
-        desc: "Design stakeholder reviews taking longer than planned, delaying frontend screen development.",
-        category: "Scope",
-        likelihood: 3,
-        impact: 3,
-        owner: "Meera",
-        mitigation: "Freeze core screen wireframes after sprint 2; defer optional animations to v1.1.",
-        contingency: "Use standard component libraries (Tailwind/Material) for secondary screens.",
-        status: "Monitored",
-        dateAdded: PP.day(-10)
-      },
-      {
-        id: 4,
-        project: 1,
-        taskId: 0,
-        title: "Single Point of Failure on Backend Engineer",
-        desc: "Rahul is assigned to 3 major concurrent activities on the critical path.",
-        category: "Resource",
-        likelihood: 4,
-        impact: 4,
-        owner: "Rahul",
-        mitigation: "Pair programming sessions with Aisha to cross-train on database endpoints.",
-        contingency: "Reassign non-critical documentation and setup tasks to Dev.",
-        status: "Mitigating",
-        dateAdded: PP.day(-3)
-      },
-      {
-        id: 5,
-        project: 2,
-        taskId: 8,
-        title: "Domain DNS & SSL Propagation Delays",
-        desc: "Hosting migration DNS propagation takes up to 48 hours for department website launch.",
-        category: "External",
-        likelihood: 2,
-        impact: 3,
-        owner: "Dev",
-        mitigation: "Pre-configure TTL to 300 seconds 3 days prior to production cutover.",
-        contingency: "Keep staging proxy URL active as immediate fallback.",
-        status: "Closed",
-        dateAdded: PP.day(-25)
-      }
-    ]
+    team: [],
+    projects: [],
+    tasks: [],
+    dependencies: [],
+    risks: []
   };
 }
 
@@ -148,7 +43,7 @@ PP.showBackendError = msg => {
   banner.innerHTML = `
     <div>
       <strong>⚠️ Backend Connection Error:</strong>
-      <span>${PP.esc(msg || "Could not connect to ProjectPulse API server at " + apiBase + ". Make sure uvicorn is running.")}</span>
+      <span>${PP.esc(msg || "Could not connect to ProgNix API server at " + apiBase + ". Make sure uvicorn is running.")}</span>
     </div>
     <button class="btn small-btn ghost" id="btn-retry-backend" type="button">Retry Connection</button>
   `;
@@ -178,13 +73,26 @@ PP.load = () => {
     localData = {};
   }
 
+  // Purge obsolete demo projects ("Campus Event App", "Website Redesign")
+  const rawProjects = Array.isArray(localData.projects) ? localData.projects : [];
+  const cleanProjects = rawProjects.filter(p => p && p.name !== "Campus Event App" && p.name !== "Website Redesign");
+
+  const rawTasks = Array.isArray(localData.tasks) ? localData.tasks : [];
+  const cleanTasks = rawTasks.filter(t => t && t.name !== "Gather requirements" && t.name !== "Design UI mockups");
+
+  const rawTeam = Array.isArray(localData.team) ? localData.team : [];
+  const cleanTeam = rawTeam.filter(m => m && m !== "Unassigned" && String(m).trim().length > 0);
+
+  const rawRisks = Array.isArray(localData.risks) ? localData.risks : [];
+  const cleanRisks = rawRisks.filter(r => r && !String(r.title || "").includes("API Gateway Rate-Limiting"));
+
   return {
-    team: localData.team || ["Aisha", "Rahul", "Meera", "Dev"],
+    team: cleanTeam,
     teamDetails: localData.teamDetails || {},
-    projects: [], // Authoritative source is backend
-    tasks: [],    // Authoritative source is backend
-    dependencies: [],
-    risks: (Array.isArray(localData.risks) && localData.risks.length) ? localData.risks : demoData().risks
+    projects: cleanProjects,
+    tasks: cleanTasks,
+    dependencies: Array.isArray(localData.dependencies) ? localData.dependencies : [],
+    risks: cleanRisks
   };
 };
 
@@ -203,14 +111,67 @@ PP.syncWithBackend = async () => {
       PP.api.dependencies.list()
     ]);
 
-    PP.data.projects = (bpProjects || []).map(PP.adapters.projectFromBackend);
+    const localData = JSON.parse(localStorage.getItem("pp_data") || "{}");
+    const savedProjectMembers = localData.projectMembers || {};
+
+    PP.data.projects = (bpProjects || []).map(p => {
+      const fp = PP.adapters.projectFromBackend(p);
+      if (savedProjectMembers[fp.id] && Array.isArray(savedProjectMembers[fp.id])) {
+        fp.teamMembers = savedProjectMembers[fp.id].slice();
+      }
+      return fp;
+    });
     PP.data.tasks = (bpTasks || []).map(PP.adapters.taskFromBackend);
     PP.data.dependencies = bpDeps || [];
 
-    // Sync task assignees into team list
-    const assignees = PP.data.tasks.map(t => t.assignee).filter(Boolean);
-    const teamSet = new Set([...PP.data.team, ...assignees]);
+    // Populate teamMembers for projects if empty
+    PP.data.projects.forEach(p => {
+      if (!Array.isArray(p.teamMembers) || p.teamMembers.length === 0) {
+        const pTasks = PP.data.tasks.filter(t => Number(t.project || t.project_id) === Number(p.id));
+        const pAssignees = Array.from(new Set(pTasks.map(t => t.assignee).filter(a => a && a !== "Unassigned" && String(a).trim().length > 0)));
+        if (pAssignees.length) {
+          p.teamMembers = pAssignees;
+        } else {
+          p.teamMembers = PP.data.team.slice(0, Math.min(Number(p.members || p.team_size || 1), PP.data.team.length));
+        }
+      }
+    });
+
+    // Sync task assignees into team list (excluding Unassigned)
+    const assignees = PP.data.tasks
+      .map(t => t.assignee)
+      .filter(a => a && a !== "Unassigned" && String(a).trim().length > 0);
+    const cleanTeam = (PP.data.team || []).filter(m => m && m !== "Unassigned" && String(m).trim().length > 0);
+    const teamSet = new Set([...cleanTeam, ...assignees]);
     PP.data.team = Array.from(teamSet);
+
+    // 3. Fetch real risks from backend for all projects
+    if (PP.api.risks && PP.data.projects.length) {
+      try {
+        const riskResults = await Promise.all(
+          PP.data.projects.map(p => PP.api.risks.list(p.id).catch(() => []))
+        );
+        const allRisks = riskResults.flat().map(r => ({
+          id: r.id,
+          project: r.project_id,
+          projectId: r.project_id,
+          taskId: r.task_id || 0,
+          title: r.title,
+          desc: r.description || "",
+          category: r.category || "Technical",
+          likelihood: r.likelihood,
+          impact: r.impact,
+          score: r.score,
+          mitigation: r.mitigation || "",
+          contingency: "",
+          status: "Open",
+          owner: ""
+        }));
+        PP.data.risks = allRisks;
+      } catch (_) {}
+    } else {
+      PP.data.risks = [];
+    }
 
     PP.isBackendConnected = true;
     PP.hideBackendError();
@@ -225,11 +186,19 @@ PP.syncWithBackend = async () => {
 };
 
 PP.save = () => {
-  // Persist auxiliary local state (risks, team preferences) without overriding server data
+  const projectMembers = {};
+  (PP.data.projects || []).forEach(p => {
+    if (Array.isArray(p.teamMembers) && p.teamMembers.length) {
+      projectMembers[p.id] = p.teamMembers;
+    }
+  });
+
+  // Persist auxiliary local state (risks, team preferences, project team members)
   const toSave = {
-    team: PP.data.team,
-    teamDetails: PP.data.teamDetails,
-    risks: PP.data.risks
+    team: (PP.data.team || []).filter(m => m && m !== "Unassigned" && String(m).trim().length > 0),
+    teamDetails: PP.data.teamDetails || {},
+    risks: PP.data.risks,
+    projectMembers: projectMembers
   };
   localStorage.setItem("pp_data", JSON.stringify(toSave));
 };

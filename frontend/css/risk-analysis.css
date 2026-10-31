@@ -380,6 +380,13 @@ html[data-theme="dark"] .risk-badge.low      { background: rgba(16, 185, 129, 0.
 .risk-score-pill.med  { background: #fef9c3; color: #a16207; }
 .risk-score-pill.low  { background: #d1fae5; color: #047857; }
 
+html[data-theme="dark"] .risk-score-pill.crit { background: rgba(229, 72, 77, 0.3); color: #fca5a5; }
+html[data-theme="dark"] .risk-score-pill.high { background: rgba(249, 115, 22, 0.3); color: #fdba74; }
+html[data-theme="dark"] .risk-score-pill.med  { background: rgba(234, 179, 8, 0.3);  color: #fde047; }
+html[data-theme="dark"] .risk-score-pill.low  { background: rgba(16, 185, 129, 0.3); color: #86efac; }
+.cat-tag.cat-task { background: #eff6ff; color: #1e40af; }
+html[data-theme="dark"] .cat-tag.cat-task { background: #1e293b; color: #93c5fd; }
+
 /* Status selector styling */
 .status-pill-select {
   border-radius: 6px;

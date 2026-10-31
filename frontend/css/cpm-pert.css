@@ -973,6 +973,48 @@ html[data-theme="dark"] .confidence-table td {
   border-color: var(--border);
   color: var(--text);
 }
+html[data-theme="dark"] .node-dur,
+html[data-theme="dark"] .node-duration {
+  background: var(--soft);
+  color: var(--text);
+  border-color: var(--border);
+}
+html[data-theme="dark"] .cpm-row-critical {
+  background: rgba(239, 133, 137, 0.12);
+}
+html[data-theme="dark"] .pert-prob-display {
+  background: var(--surface);
+  border-color: var(--border);
+}
+html[data-theme="dark"] .prob-circle-wrap {
+  background: linear-gradient(135deg, var(--soft), var(--surface));
+  border-color: var(--primary);
+}
+html[data-theme="dark"] .pert-formula-note code {
+  background: var(--soft);
+  border-color: var(--border);
+  color: var(--secondary);
+}
+html[data-theme="dark"] .pert-preview-box {
+  background: var(--surface);
+  border-color: var(--border);
+}
+html[data-theme="dark"] .deps-choice-list {
+  background: var(--surface);
+  border-color: var(--border);
+}
+html[data-theme="dark"] .dep-choice-item {
+  background: var(--soft);
+  color: var(--text);
+  border-color: var(--border);
+}
+html[data-theme="dark"] .project-cpm-card {
+  background: linear-gradient(110deg, #30262a 0%, var(--surface) 72%);
+}
+html[data-theme="dark"] .project-cpm-stat {
+  background: var(--surface);
+  border-color: var(--border);
+}
 
 
 /* Plain-language schedule status replaces the confusing signed day count. */

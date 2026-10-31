@@ -371,7 +371,7 @@
             <span>${PP.esc(r.desc || "No description provided.")}</span>
             <div style="margin-top:4px">
               <span class="cat-tag">${PP.esc(r.category || "General")}</span>
-              ${linkedTask ? `<span class="cat-tag" style="background:#eff6ff;color:#1e40af">Task: ${PP.esc(linkedTask.name)}</span>` : ''}
+              ${linkedTask ? `<span class="cat-tag cat-task">Task: ${PP.esc(linkedTask.name)}</span>` : ''}
             </div>
           </td>
           <td><b>${PP.esc(projName)}</b></td>
@@ -589,9 +589,15 @@
     }
   }
 
-  riskEngine.deleteRisk = function(id) {
+  riskEngine.deleteRisk = async function(id) {
     if (!confirm("Are you sure you want to remove this risk from the register?")) return;
-    PP.data.risks = PP.data.risks.filter(r => r.id !== id);
+    const r = PP.data.risks.find(x => x.id === id);
+    if (r && PP.api && PP.api.risks) {
+      try {
+        await PP.api.risks.delete(r.project || r.projectId, id);
+      } catch (_) {}
+    }
+    PP.data.risks = PP.data.risks.filter(x => x.id !== id);
     PP.save();
     riskEngine.render();
     PP.toast("Risk removed.");
@@ -639,7 +645,7 @@
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `projectpulse-risks-${PP.day(0)}.csv`;
+    link.download = `prognix-risks-${PP.day(0)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
     PP.toast("Risk register exported to CSV.");
@@ -688,7 +694,7 @@
     // Modal Form Submit
     const form = document.getElementById("risk-modal-form");
     if (form) {
-      form.onsubmit = e => {
+      form.onsubmit = async e => {
         e.preventDefault();
         const title = document.getElementById("rm-title").value.trim();
         if (!title) {
@@ -707,34 +713,63 @@
         const status = document.getElementById("rm-status").value;
         const desc = document.getElementById("rm-desc").value.trim();
 
-        if (editingRiskId) {
-          const r = PP.data.risks.find(x => x.id === editingRiskId);
-          if (r) {
-            Object.assign(r, { title, desc, project, taskId, category, likelihood, impact, owner, mitigation, contingency, status });
-          }
-          PP.toast("Risk updated.");
-        } else {
-          PP.data.risks.push({
-            id: Date.now(),
-            project,
-            taskId,
-            title,
-            desc,
-            category,
-            likelihood,
-            impact,
-            owner,
-            mitigation,
-            contingency,
-            status,
-            dateAdded: PP.day(0)
-          });
-          PP.toast("New risk added to register.");
-        }
+        const riskPayload = {
+          title,
+          description: desc || null,
+          category,
+          likelihood,
+          impact,
+          task_id: taskId > 0 ? taskId : null,
+          mitigation: mitigation || null
+        };
 
-        PP.save();
-        document.getElementById("risk-modal").classList.add("hidden");
-        riskEngine.render();
+        try {
+          if (editingRiskId) {
+            let updatedRisk = null;
+            if (PP.api && PP.api.risks) {
+              const res = await PP.api.risks.update(project, editingRiskId, riskPayload);
+              updatedRisk = res;
+            }
+            const r = PP.data.risks.find(x => x.id === editingRiskId);
+            if (r) {
+              Object.assign(r, {
+                title, desc, project, taskId, category, likelihood, impact,
+                score: likelihood * impact, owner, mitigation, contingency, status
+              });
+            }
+            PP.toast("Risk updated.");
+          } else {
+            let serverRiskId = Date.now();
+            if (PP.api && PP.api.risks) {
+              const res = await PP.api.risks.create(project, riskPayload);
+              serverRiskId = res.id;
+            }
+            PP.data.risks.push({
+              id: serverRiskId,
+              project,
+              projectId: project,
+              taskId,
+              title,
+              desc,
+              category,
+              likelihood,
+              impact,
+              score: likelihood * impact,
+              owner,
+              mitigation,
+              contingency,
+              status,
+              dateAdded: PP.day(0)
+            });
+            PP.toast("New risk added to register.");
+          }
+
+          PP.save();
+          document.getElementById("risk-modal").classList.add("hidden");
+          riskEngine.render();
+        } catch (apiErr) {
+          document.getElementById("rm-error").textContent = apiErr.message || "Failed to save risk to server.";
+        }
       };
     }
   });

@@ -26,6 +26,16 @@ PP.renders.tasks = () => {
   const pr = $("t-priority").value;
   const cpmFilter = $("t-cpm") ? $("t-cpm").value : "";
 
+  const projectSelect = $("t-project");
+  if (projectSelect) {
+    const prevProj = projectSelect.value;
+    const projOpts = ['<option value="">All Projects</option>']
+      .concat(PP.data.projects.map(p => `<option value="${p.id}" ${String(p.id) === String(prevProj) ? "selected" : ""}>${PP.esc(p.name)}</option>`));
+    projectSelect.innerHTML = projOpts.join("");
+  }
+  const projFilter = projectSelect ? projectSelect.value : "";
+  const sortOption = $("t-sort") ? $("t-sort").value : "";
+
   // Pre-calculate CPM for all projects
   const cpmMap = new Map();
   if (PP.cpm) {
@@ -35,20 +45,34 @@ PP.renders.tasks = () => {
   }
 
   const list = PP.data.tasks.filter(t => {
-    const matchSearch = (!q || (t.name + t.assignee).toLowerCase().includes(q));
+    const matchSearch = (!q || (t.name + (t.assignee || "")).toLowerCase().includes(q));
+    const matchProject = (!projFilter || String(t.project || t.project_id) === String(projFilter));
     const matchStatus = (!st || t.status === st);
     const matchPriority = (!pr || t.priority === pr);
 
     let matchCpm = true;
     if (cpmFilter) {
-      const pCpm = cpmMap.get(Number(t.project));
+      const pCpm = cpmMap.get(Number(t.project || t.project_id));
       const cTask = pCpm ? pCpm.tasks.find(x => x.id === t.id) : null;
       if (cpmFilter === "critical") matchCpm = cTask && cTask.isCritical;
       else if (cpmFilter === "slack") matchCpm = cTask && !cTask.isCritical;
     }
 
-    return matchSearch && matchStatus && matchPriority && matchCpm;
+    return matchSearch && matchProject && matchStatus && matchPriority && matchCpm;
   });
+
+  if (sortOption === "project") {
+    list.sort((a, b) => PP.projectName(a.project || a.project_id).localeCompare(PP.projectName(b.project || b.project_id)));
+  } else if (sortOption === "priority") {
+    const pRank = { High: 3, Medium: 2, Low: 1 };
+    list.sort((a, b) => (pRank[b.priority] || 0) - (pRank[a.priority] || 0));
+  } else if (sortOption === "name") {
+    list.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sortOption === "progress") {
+    list.sort((a, b) => b.progress - a.progress);
+  } else {
+    list.sort((a, b) => (a.end || "").localeCompare(b.end || ""));
+  }
 
   $("task-body").innerHTML = list.map(t => {
     const pCpm = cpmMap.get(Number(t.project));
@@ -109,8 +133,18 @@ window.removeTask = async id => {
       if (Number(t.dep) === Number(id)) t.dep = 0;
       if (Array.isArray(t.deps)) t.deps = t.deps.filter(d => Number(d) !== Number(id));
     });
+    PP.save();
     PP.toast("Task deleted.");
-    PP.refresh();
+    if (PP.page === "projects" && PP.selectedProjectId) {
+      const currentProj = PP.data.projects.find(p => Number(p.id) === Number(PP.selectedProjectId));
+      if (currentProj && PP.renderProjectDetails) {
+        PP.renderProjectDetails(currentProj);
+      } else {
+        PP.refresh();
+      }
+    } else {
+      PP.refresh();
+    }
   } catch (err) {
     PP.toast("Failed to delete task: " + err.message, "error");
   }
@@ -144,16 +178,29 @@ function renderDepsCheckboxes(currentTaskId, selectedProjectId, currentDeps) {
 
 PP.openTask = (id, projectId) => {
   editingId = id || null;
-  const defProj = projectId || (PP.data.projects[0] || {}).id;
+  const defProj = projectId || PP.selectedProjectId || (PP.data.projects[0] || {}).id;
   const t = id
     ? PP.data.tasks.find(x => Number(x.id) === Number(id))
-    : { project: defProj, assignee: PP.data.team[0], name: "", start: PP.day(0), end: PP.day(7), priority: "Medium", status: "To Do", progress: 0, dep: 0, deps: [] };
+    : { project: defProj, assignee: "", name: "", start: PP.day(0), end: PP.day(7), priority: "Medium", status: "To Do", progress: 0, dep: 0, deps: [] };
 
   PP.ensureTaskDefaults(t);
 
   $("modal-title").textContent = id ? "Edit task" : "Add task";
   $("f-project").innerHTML = opts(PP.data.projects.map(p => [p.id, p.name]), t.project || t.project_id);
-  $("f-assignee").innerHTML = opts(PP.data.team.map(m => [m, m]), t.assignee);
+
+  const cleanTeam = (PP.data.team || []).filter(m => m && m !== "Unassigned" && String(m).trim().length > 0);
+  const assigneeOpts = [["", "Unassigned"]].concat(cleanTeam.map(m => [m, m]));
+  const currentAssignee = (t.assignee && t.assignee !== "Unassigned") ? t.assignee : "";
+  $("f-assignee").innerHTML = opts(assigneeOpts, currentAssignee);
+
+  const deleteBtn = $("f-delete");
+  if (deleteBtn) {
+    deleteBtn.classList.toggle("hidden", !id);
+    deleteBtn.onclick = () => {
+      $("task-modal").classList.add("hidden");
+      window.removeTask(id);
+    };
+  }
 
   const availableTasks = PP.data.tasks.filter(x => Number(x.id) !== Number(id) && Number(x.project || x.project_id) === Number(t.project || t.project_id));
   $("f-dep").innerHTML = opts([[0, "None"]].concat(availableTasks.map(x => [x.id, x.name])), t.dep);
@@ -199,9 +246,12 @@ PP.openTask = (id, projectId) => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  ["t-search", "t-status", "t-priority", "t-cpm"].forEach(i => {
+  ["t-search", "t-status", "t-priority", "t-cpm", "t-project", "t-sort"].forEach(i => {
     const el = $(i);
-    if (el) el.addEventListener("input", PP.renders.tasks);
+    if (el) {
+      el.addEventListener("input", PP.renders.tasks);
+      el.addEventListener("change", PP.renders.tasks);
+    }
   });
 
   $("add-task").onclick = () => PP.data.projects.length ? PP.openTask() : PP.toast("Create a project first.", "error");
@@ -300,7 +350,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
       PP.save();
       $("task-modal").classList.add("hidden");
-      PP.refresh();
+      if (PP.page === "projects" && PP.selectedProjectId) {
+        const currentProj = PP.data.projects.find(p => Number(p.id) === Number(PP.selectedProjectId));
+        if (currentProj && PP.renderProjectDetails) {
+          PP.renderProjectDetails(currentProj);
+        } else {
+          PP.refresh();
+        }
+      } else {
+        PP.refresh();
+      }
       PP.toast(editingId ? "Task updated." : "Task added.");
     } catch (apiErr) {
       $("f-error").textContent = apiErr.message;

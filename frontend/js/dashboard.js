@@ -78,7 +78,7 @@ PP.renders.dashboard = () => {
           <div style="background:var(--bg); padding:12px 14px; border-radius:8px; border:1px solid var(--border)">
             <span class="muted small" style="display:block; font-weight:600">Project Health Score</span>
             <strong style="font-size:1.45rem">${health.score}/100</strong>
-            <div class="small" style="color:${health.class === 'crit' ? 'var(--danger)' : (health.class === 'warn' ? '#b45309' : 'var(--success)')}; font-weight:600">${health.label}</div>
+            <div class="small" style="color:${health.class === 'crit' ? 'var(--danger)' : (health.class === 'warn' ? 'var(--warn)' : 'var(--success)')}; font-weight:600">${health.label}</div>
           </div>
           <div style="background:var(--bg); padding:12px 14px; border-radius:8px; border:1px solid var(--border)">
             <span class="muted small" style="display:block; font-weight:600">Active Risk Register</span>

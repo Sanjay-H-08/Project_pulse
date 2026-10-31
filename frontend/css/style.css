@@ -1,4 +1,4 @@
-:root{color-scheme:light;--bg:#f4f6f8;--surface:#ffffff;--primary:#4776a8;--secondary:#537f78;--text:#26364a;--muted:#687789;--success:#39836c;--warn:#b98535;--danger:#c65a5a;--border:#dfe5eb;--soft:#e8eff4;--radius:10px;--shadow:0 3px 12px rgba(35,52,70,.055);--font:"Segoe UI",Roboto,Arial,sans-serif;--side:250px}
+:root{color-scheme:dark;--bg:#171e26;--surface:#202a35;--primary:#8db7df;--secondary:#91b9ad;--text:#e7edf3;--muted:#a8b5c2;--success:#78c3a8;--warn:#e5bb72;--danger:#ef9292;--border:#354351;--soft:#2b3947;--radius:10px;--shadow:0 3px 12px rgba(0,0,0,.16);--font:"Segoe UI",Roboto,Arial,sans-serif;--side:250px}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.5}
 a{text-decoration:none;color:var(--primary)}
@@ -12,12 +12,12 @@ h2{font-size:1.05rem;margin-bottom:12px}
 .btn.ghost{background:var(--soft);color:var(--primary);border-color:#d6e0e8}.btn.danger{background:var(--danger)}
 .small-btn{padding:7px 14px;margin-left:auto}
 label{display:block;font-size:.85rem;font-weight:600;margin-bottom:14px}
-input,select,textarea{display:block;width:100%;margin-top:5px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font:inherit;background:#fff;color:var(--text)}
+input,select,textarea{display:block;width:100%;margin-top:5px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font:inherit;background:var(--surface);color:var(--text)}
 input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
 .form-error{color:var(--danger);font-size:.85rem;min-height:1.2em;margin-bottom:8px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .row-between{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
-.auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#edf1f4}
+.auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#151b22}
 .auth-card{background:var(--surface);padding:36px;border-radius:var(--radius);box-shadow:var(--shadow);width:100%;max-width:400px}
 .auth-card .muted{margin:4px 0 20px}.auth-card .btn{width:100%;margin-bottom:14px}
 .sidebar{position:fixed;top:0;left:0;width:var(--side);height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:24px 16px;z-index:100;transition:transform .3s}
@@ -50,14 +50,14 @@ td select{width:auto;margin:0;padding:5px 8px}
 .link-btn{background:none;border:0;color:var(--primary);cursor:pointer;font:inherit;font-weight:600;margin-right:8px}.link-btn.del{color:var(--danger)}
 .empty{color:var(--muted);padding:18px;text-align:center}
 .modal{position:fixed;inset:0;background:rgba(31,42,68,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:200}
-.modal-card{background:#fff;border-radius:var(--radius);padding:26px;width:100%;max-width:520px;max-height:92vh;overflow:auto}
+.modal-card{background:var(--surface);color:var(--text);border-radius:var(--radius);padding:26px;width:100%;max-width:520px;max-height:92vh;overflow:auto}
 #toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:300}
 .toast{background:var(--text);color:#fff;padding:12px 18px;border-radius:10px;box-shadow:var(--shadow);animation:fade .25s}
 .toast.success{background:var(--success)}.toast.error{background:var(--danger)}
 
 /* Team management and project assignment */
 .member-choices{display:flex;flex-wrap:wrap;gap:9px;margin:8px 0 14px}
-.member-choice{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:10px;padding:8px 11px;background:#fff;cursor:pointer;margin:0}
+.member-choice{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:10px;padding:8px 11px;background:var(--surface);color:var(--text);cursor:pointer;margin:0}
 .member-choice input{width:auto;margin:0;accent-color:var(--primary)}
 .assign-members{margin-top:14px;border-top:1px solid var(--border);padding-top:12px}
 .assign-members summary{color:var(--primary);font-weight:600;cursor:pointer}
@@ -90,7 +90,23 @@ td select{width:auto;margin:0;padding:5px 8px}
 .theme-switch input:checked + .theme-switch-track::after{transform:translateX(20px)}
 .theme-switch input:focus-visible + .theme-switch-track{outline:2px solid var(--primary);outline-offset:3px}
 
-/* Optional dark theme, persisted per browser */
+/* Light theme override */
+html[data-theme="light"]{color-scheme:light;--bg:#f4f6f8;--surface:#ffffff;--primary:#4776a8;--secondary:#537f78;--text:#26364a;--muted:#687789;--success:#39836c;--warn:#b98535;--danger:#c65a5a;--border:#dfe5eb;--soft:#e8eff4;--shadow:0 3px 12px rgba(35,52,70,.055)}
+html[data-theme="light"] .auth{background:#edf1f4}
+html[data-theme="light"] .auth-card,html[data-theme="light"] .modal-card,html[data-theme="light"] input,html[data-theme="light"] select,html[data-theme="light"] textarea,html[data-theme="light"] .member-choice,html[data-theme="light"] .chip{background:#fff;color:var(--text);border-color:var(--border)}
+html[data-theme="light"] .nav-link.active{background:#e5edf4;color:#2f5d86}
+html[data-theme="light"] .btn{background:#4776a8;color:#fff}
+html[data-theme="light"] .btn.ghost{background:var(--soft);color:var(--primary);border-color:#d6e0e8}
+html[data-theme="light"] .btn.danger{background:var(--danger)}
+html[data-theme="light"] .p-High{background:#fde8e9;color:var(--danger)}
+html[data-theme="light"] .p-Medium{background:#fff3da;color:#b9770e}
+html[data-theme="light"] .p-Low{background:#e3f6ee;color:var(--success)}
+html[data-theme="light"] .status-Completed,html[data-theme="light"] .task-status-done{background:#e3f6ee;color:var(--success)}
+html[data-theme="light"] .status-Active,html[data-theme="light"] .task-status-progress{background:var(--soft);color:var(--primary)}
+html[data-theme="light"] .task-status-todo{background:var(--soft);color:var(--muted)}
+html[data-theme="light"] .cpm-chain-step,html[data-theme="light"] .cpm-node{color:#26364a}
+
+/* Dark theme, default */
 html[data-theme="dark"]{color-scheme:dark;--bg:#171e26;--surface:#202a35;--primary:#8db7df;--secondary:#91b9ad;--text:#e7edf3;--muted:#a8b5c2;--success:#78c3a8;--warn:#e5bb72;--danger:#ef9292;--border:#354351;--soft:#2b3947;--shadow:0 3px 12px rgba(0,0,0,.16)}
 html[data-theme="dark"] .auth{background:#151b22}
 html[data-theme="dark"] .auth-card,html[data-theme="dark"] .modal-card,html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea,html[data-theme="dark"] .member-choice,html[data-theme="dark"] .chip{background:var(--surface);color:var(--text);border-color:var(--border)}
@@ -104,7 +120,9 @@ html[data-theme="dark"] .p-Low{background:#23443b;color:#a6e1ca}
 html[data-theme="dark"] .status-Completed,html[data-theme="dark"] .task-status-done{background:#23443b;color:#a6e1ca}
 html[data-theme="dark"] .status-Active,html[data-theme="dark"] .task-status-progress{background:#2b4053;color:#c5def2}
 html[data-theme="dark"] .task-status-todo{background:#303b47;color:var(--muted)}
-html[data-theme="dark"] .cpm-chain-step,html[data-theme="dark"] .cpm-node{color:#26364a}
+html[data-theme="dark"] .cpm-chain-step,html[data-theme="dark"] .cpm-node{color:var(--text)}
+html[data-theme="dark"] .btn:hover{background:#4f82b0;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+html[data-theme="dark"] .btn.ghost:hover{background:#354758;color:#e7edf3}
 
 
 /* Project-level priority labels */

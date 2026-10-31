@@ -1,8 +1,8 @@
-// api.js: ProjectPulse API client, endpoints, and data adapters.
+// api.js: ProgNix API client, endpoints, and data adapters.
 // Connects vanilla JS frontend to FastAPI backend (/api).
 (function() {
   // Configurable base URL: uses current origin if hosted together or window override, otherwise defaults to port 8000.
-  const DEFAULT_API_BASE = (window.PROJECTPULSE_API_URL ||
+  const DEFAULT_API_BASE = (window.PROGNIX_API_URL || window.PROJECTPULSE_API_URL ||
     (window.location.port === "8000" ? window.location.origin + "/api" : "http://localhost:8000/api")
   ).replace(/\/+$/, "");
 
@@ -23,6 +23,14 @@
       ...(options.headers || {})
     };
 
+    // Attach active JWT token if authenticated
+    try {
+      const token = localStorage.getItem("pp_token");
+      if (token && !headers["Authorization"]) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+    } catch (_) {}
+
     if (options.body && !(options.body instanceof FormData) && typeof options.body === "object") {
       headers["Content-Type"] = "application/json";
       options.body = JSON.stringify(options.body);
@@ -33,7 +41,7 @@
       response = await fetch(url, { ...options, headers });
     } catch (networkErr) {
       throw new ApiError(
-        `Unable to connect to ProjectPulse API server at ${DEFAULT_API_BASE}. Please ensure the backend is running.`,
+        `Unable to connect to ProgNix API server at ${DEFAULT_API_BASE}. Please ensure the backend is running.`,
         0,
         networkErr.message
       );
@@ -104,6 +112,13 @@
     baseUrl: DEFAULT_API_BASE,
     ApiError,
 
+    // Authentication (/auth)
+    auth: {
+      register: data => http.post("/auth/register", data),
+      login: data => http.post("/auth/login", data),
+      me: () => http.get("/auth/me")
+    },
+
     // Health
     health: {
       check: () => http.get("/health")
@@ -137,6 +152,16 @@
       get: id => http.get(`/dependencies/${id}`),
       create: data => http.post("/dependencies", data),
       delete: id => http.delete(`/dependencies/${id}`)
+    },
+
+    // Project Risks (/projects/{id}/risks)
+    risks: {
+      list: projectId => http.get(`/projects/${projectId}/risks`),
+      get: (projectId, riskId) => http.get(`/projects/${projectId}/risks/${riskId}`),
+      create: (projectId, data) => http.post(`/projects/${projectId}/risks`, data),
+      update: (projectId, riskId, data) => http.put(`/projects/${projectId}/risks/${riskId}`, data),
+      delete: (projectId, riskId) => http.delete(`/projects/${projectId}/risks/${riskId}`),
+      summary: projectId => http.get(`/projects/${projectId}/risks/summary`)
     }
   };
 
@@ -148,6 +173,19 @@
     // Backend ProjectResponse -> Frontend project object
     projectFromBackend(bp) {
       if (!bp) return null;
+      let existingTeamMembers = [];
+      let existingPriority = "Medium";
+      let existingReq = "";
+      if (typeof PP !== "undefined" && PP.data && Array.isArray(PP.data.projects)) {
+        const found = PP.data.projects.find(p => Number(p.id) === Number(bp.id));
+        if (found) {
+          if (Array.isArray(found.teamMembers) && found.teamMembers.length) {
+            existingTeamMembers = found.teamMembers.slice();
+          }
+          if (found.priority) existingPriority = found.priority;
+          if (found.req) existingReq = found.req;
+        }
+      }
       return {
         id: bp.id,
         name: bp.name || "",
@@ -157,12 +195,12 @@
         startDate: bp.start_date || "",
         start_date: bp.start_date || "",
         deadline: bp.deadline || "",
-        members: bp.team_size || 1,
-        team_size: bp.team_size || 1,
-        teamMembers: [], // Preserved or populated from tasks
-        priority: "Medium",
+        members: bp.team_size || (existingTeamMembers.length || 1),
+        team_size: bp.team_size || (existingTeamMembers.length || 1),
+        teamMembers: existingTeamMembers,
+        priority: existingPriority,
         tasks_count: bp.tasks_count || 0,
-        req: ""
+        req: existingReq
       };
     },
 
@@ -225,7 +263,7 @@
         end: e,
         duration: dur,
         progress: Number(bt.progress) || 0,
-        assignee: bt.assignee || "Unassigned",
+        assignee: bt.assignee ? bt.assignee : "",
         status: bt.status || "To Do",
         priority: bt.priority || "Medium",
         dep: deps[0] || 0,
@@ -289,7 +327,7 @@
         status: status,
         priority: ft.priority || "Medium",
         progress: progress,
-        assignee: ft.assignee || null,
+        assignee: (ft.assignee && ft.assignee !== "Unassigned" && String(ft.assignee).trim().length > 0) ? String(ft.assignee).trim() : null,
         optimistic_duration: opt,
         most_likely_duration: likely,
         pessimistic_duration: pess

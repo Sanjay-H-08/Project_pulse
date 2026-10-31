@@ -9,10 +9,14 @@ DEFAULT_SQLITE_PATH = BACKEND_DIR / "projectpulse.db"
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "ProjectPulse AI"
+    PROJECT_NAME: str = "ProgNix"
     VERSION: str = "0.1.0"
-    DESCRIPTION: str = "Industrial project planning and monitoring platform API"
+    DESCRIPTION: str = "ProgNix Industrial project planning and monitoring platform API"
     API_V1_STR: str = "/api/v1"
+
+    # Security & Auth
+    SECRET_KEY: str = "prognix-secret-jwt-key-2026-secure-session-token"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
     # Environment
     ENVIRONMENT: str = "development"

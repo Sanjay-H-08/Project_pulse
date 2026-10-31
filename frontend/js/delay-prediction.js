@@ -501,7 +501,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `projectpulse-delay-prediction-${PP.day(0)}.csv`;
+        a.download = `prognix-delay-prediction-${PP.day(0)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
         PP.toast("Delay prediction exported.");
